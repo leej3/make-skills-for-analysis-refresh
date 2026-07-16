@@ -8,7 +8,7 @@
 
 Pixi tasks may expose parameterized DataLad or BABS commands as project launchers. They do not define a BIDS App interface; the app's tracked container entrypoint does. The important boundary is not whether a Pixi task starts the operation, but what the durable record says happened.
 
-For project-authored scientific steps, the task must invoke `datalad containers-run` and pass the explicit scientific executable and arguments to it. DataLad therefore records the resolved command, declared inputs and outputs, and registered SIF—not `pixi run <task>`.
+For project-authored scientific steps, the task must invoke `datalad containers-run`. For a BIDS App, it passes the resolved standard app arguments and any explicit project operation to the registered SIF runscript; for another scientific program, it passes the explicit executable and arguments. DataLad therefore records the resolved operation, declared inputs and outputs, and registered SIF—not `pixi run <task>`.
 
 For BABS lifecycle operations such as `init`, setup checks, submission, retry, and merge, a Pixi task may expose the command even though the invocation is not a DataLad scientific run. The task and README make the repository actionable; an operations ledger records what was actually invoked and what state changed.
 
@@ -35,7 +35,7 @@ pixi run --locked extract <parameters>
     -> run record: app arguments/operation, inputs, outputs, and SIF
 ```
 
-In the good direction, Pixi is only a convenient command launcher. Its parameter substitution happens before DataLad receives the command, so the DataLad record is the provenance authority. Editing the Pixi task later does not change the historical run record. The SIF runscript invokes the tracked entrypoint constructed from [`bids-apps/example`](https://github.com/bids-apps/example), independently of the Pixi task.
+In the good direction, Pixi is only a convenient command launcher. Its parameter substitution happens before DataLad receives the command, so the DataLad record is the provenance authority. Editing the Pixi task later does not change the historical run record. The SIF runscript invokes the tracked entrypoint constructed from [`bids-apps/example@2ef3f19`](https://github.com/bids-apps/example/tree/2ef3f19268135273aa49bd2a61c72eaac56f5cef), independently of the Pixi task.
 
 ## A parameterized scientific task
 
@@ -60,7 +60,7 @@ datalad containers-run \
 
 Register the app container with a call format that invokes its SIF runscript so the command after `--` is the standard BIDS App argument vector. The precise quoting and repeated-argument behavior must be tested for paths containing spaces. Prefer validated path/config identifiers over arbitrary shell fragments. Keep scientific parameters in tracked configuration where possible, and include that configuration as a declared DataLad input.
 
-Each such task should produce one understandable DataLad run record. Use a closed, validated BIDS App target/analysis-level contract and reject arbitrary targets. Do not join extraction, modeling, and figures with `depends-on`; expose independent DataLad-recorded steps instead.
+Each such task should produce one understandable DataLad run record. Use the standard BIDS App argument contract plus any closed, validated project operation; reject arbitrary operations. Do not join extraction, modeling, and figures with `depends-on`; expose independent DataLad-recorded steps instead.
 
 ## BABS as the explicit exception
 
@@ -108,7 +108,7 @@ Apptainer/Singularity builds a SIF. DataLad Containers registers it with `contai
 ## Acceptance criteria
 
 - No scientific DataLad record contains only `pixi run <task>` or another task/Make target.
-- Every project-authored result-changing task creates an explicit `datalad containers-run` record naming the registered SIF, inputs, outputs, program, and critical arguments.
+- Every project-authored result-changing task creates an explicit `datalad containers-run` record naming the registered SIF, inputs, outputs, app operation or program, and critical arguments.
 - No scientific stage graph depends on Pixi `depends-on`, input/output caching, or skip decisions.
 - Project actions are available through parameterized Pixi tasks while the tracked container entrypoint remains the BIDS App interface; scientific task bodies expose the explicit BIDS App arguments and operation to DataLad.
 - Every BABS lifecycle task is documented, and every actual state-changing invocation has a corresponding operations-ledger entry.

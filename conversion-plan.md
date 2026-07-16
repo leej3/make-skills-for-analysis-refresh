@@ -19,13 +19,13 @@ Copy the repository-local [STAMPED neuroimaging skill](skills/stamped-neuroimagi
 - Store the real Pixi manifest and lock under `envs/`, with tracked root symlinks for discovery. Do not use `pixi pack` or another packed-prefix artifact.
 - Use one `analysis` environment with `pandas<2` while the selected `freesurfer-stats` release requires it. This is the analysis environment, not a legacy extraction environment. When a qualified release supports `pandas>=2`, review the dependency update, produce a new lock and analysis SIF, and rerun affected results.
 - Let Pixi tasks provide local and actionable interfaces. A task may wrap a BABS lifecycle operation, an image operation, or a complete `datalad containers-run` command. Never record only `pixi run <task>` inside DataLad, never let a scientific task bypass DataLad, and never use Pixi task dependencies or caching as the scientific workflow.
-- Build project-authored BIDS Apps from [`bids-apps/example`](https://github.com/bids-apps/example). Their SIF runscripts invoke tracked app entrypoints accepting the standard BIDS App arguments; Pixi tasks may launch them but do not define their interfaces. DataLad records must expose the app arguments and any project-specific operation.
+- Build project-authored BIDS Apps from the reviewed [`bids-apps/example@2ef3f19`](https://github.com/bids-apps/example/tree/2ef3f19268135273aa49bd2a61c72eaac56f5cef). Their SIF runscripts invoke tracked app entrypoints accepting the standard BIDS App arguments; Pixi tasks may launch them but do not define their interfaces. DataLad records must expose the app arguments and any project-specific operation.
 - Use exact registered SIFs for every retained, merged, compared, or released result. Candidate images may run in quarantined debugging campaigns, but their outputs are disposable and must be regenerated after image registration.
 - Prefer an exact SIF already distributed through ReproNim/containers when its tool version, BIDS App interface, architecture, licensing, and behavior qualify. Pin the ReproNim DataLad commit and image annex key, compute a project SHA-256, and validate the image; a name or upstream OCI tag is not sufficient identity.
 - Build a SIF directly from a tracked Apptainer/Singularity definition when no existing image qualifies. A separate OCI application image requires a documented OCI consumer.
-- Accept the current BABS wrapper and zip indirection, document it, and test representative replay. Do not reproduce that indirection in project-authored targets or depend on an unreleased BABS branch.
+- Accept the current BABS wrapper and zip indirection, document it, and test representative replay. Do not reproduce that indirection in project-authored operations or depend on an unreleased BABS branch.
 - Treat `ds007116` as an engineering and scientific pilot. ABCD is the later claim-bearing analysis.
-- Ignore the old `balanced_scans.csv` until ABCD access exists, then replace it with a tracked cohort target using the permitted release and query.
+- Ignore the old `balanced_scans.csv` until ABCD access exists, then replace it with a tracked cohort BIDS App operation using the permitted release and query.
 - Do not retrieve old NIH cluster derivatives until their DUC status is resolved. They are not required to begin.
 
 ## Migration strategy
@@ -147,13 +147,13 @@ The toy campaign proves, before scientific code import, that a BABS archive can 
 
 ## Phase 4 — import and refactor scientific code as tested BIDS Apps
 
-### Target design
+### Application and operation design
 
-Import one scientific boundary at a time. Each import records its old-repository source commit, removes notebook and host assumptions, receives tests, and passes a toy containerized invocation before the next target is imported.
+Import one scientific boundary at a time. Each import records its old-repository source commit, removes notebook and host assumptions, receives tests, and passes a toy containerized invocation before the next operation is imported.
 
-Implement a closed, documented target interface such as:
+Implement closed, documented project operations such as:
 
-| Target | Allowed analysis level | Accepted inputs | Declared outputs |
+| Operation | Allowed analysis level | Accepted inputs | Declared outputs |
 |---|---|---|---|
 | `cohort` | `group` | raw BIDS metadata and tracked selection configuration | ordered cohort and exclusion tables |
 | `resample` | `participant` | declared BIDS structural images | BIDS derivative images plus transformation metadata |
@@ -163,7 +163,7 @@ Implement a closed, documented target interface such as:
 | `figures` | `group` | declared model/statistical outputs and result IDs | only the requested figures and table renderings |
 | `validate` | `participant` or `group` | a declared dataset, derivative, or result set | machine-readable validation report |
 
-Before importing each operation, decide whether it is its own BIDS App or a coherent mode of another app. Default to a separate app for an independently versioned scientific transformation; combine operations only when they share one meaningful input/output contract and lifecycle. Each app follows [`bids-apps/example`](https://github.com/bids-apps/example): its container entrypoint accepts `bids_dir`, `output_dir`, and an implemented `analysis_level`, provides participant selection where meaningful, documents validation behavior, exposes help/version information, and rejects unknown arguments. Any additional operation selector must be closed and explicit. Reconstruction and downstream apps follow the same image, testing, DataLad, and metadata rules.
+Before importing each operation, decide whether it is its own BIDS App or a coherent mode of another app. Default to a separate app for an independently versioned scientific transformation; combine operations only when they share one meaningful input/output contract and lifecycle. Each app follows [`bids-apps/example@2ef3f19`](https://github.com/bids-apps/example/tree/2ef3f19268135273aa49bd2a61c72eaac56f5cef): its container entrypoint accepts `bids_dir`, `output_dir`, and an implemented `analysis_level`, provides participant selection where meaningful, documents validation behavior, exposes help/version information, and rejects unknown arguments. Any additional operation selector must be closed and explicit. Reconstruction and downstream apps follow the same image, testing, DataLad, and metadata rules.
 
 The SIF runscript invokes the tracked `apps/<app-name>/run.py` entrypoint. Pixi tasks may expose local invocations or wrap a complete `datalad containers-run` command, but they do not define the BIDS App interface. Do not let one operation silently invoke a hidden operation DAG. Record each result-changing operation as its own explicit DataLad operation.
 
@@ -173,7 +173,7 @@ The SIF runscript invokes the tracked `apps/<app-name>/run.py` entrypoint. Pixi 
 - Remove inline `uv` metadata and installation instructions.
 - Keep the current `freesurfer-stats` compatibility constraint in the `analysis` environment. Do not label the work `extract-legacy`; qualify a newer dependency and image when available.
 - Replace path-only pickle caches. Disposable caches must include content identities and remain outside provenance; scientific tables are declared outputs.
-- Replace implicit output directories and path-parent inference with explicit target arguments and derivative metadata.
+- Replace implicit output directories and path-parent inference with explicit operation arguments and derivative metadata.
 - Remove shell-driven `ls`, interactive `freeview`, scheduler submission, and unique notebook logic from authoritative paths.
 - Emit structured exclusions and completeness tables. Make atlases, metrics, hemispheres, transformations, statistical models, seeds, and figure IDs reviewed configuration.
 - Pin TemplateFlow and other reference resources by content and record their licenses.
@@ -181,15 +181,15 @@ The SIF runscript invokes the tracked `apps/<app-name>/run.py` entrypoint. Pixi 
 
 Notebooks may remain only when they consume tracked outputs, contain no unique scientific logic, do not submit or write authoritative results, and can be deleted without preventing reconstruction.
 
-### Iteration gate for each target
+### Iteration gate for each operation
 
 1. Import the minimum reviewed code and record its source commit.
 2. Add schema and unit tests.
-3. Run the target locally through the locked Pixi environment for development.
+3. Run the operation locally through the locked Pixi environment for development.
 4. Add it to the selected `apps/<app-name>/run.py` entrypoint, expose that entrypoint through the BIDS App SIF runscript, and build a candidate SIF.
-5. Run a toy `datalad containers-run` invocation with explicit inputs, outputs, target, and arguments.
+5. Run a toy `datalad containers-run` invocation with explicit inputs, outputs, operation, and arguments.
 6. Review the resulting BIDS derivative metadata and DataLad record.
-7. Only then import the next target.
+7. Only then import the next operation.
 
 ### Phase exit gate
 
@@ -208,9 +208,9 @@ The fixture path from a reconstruction-like derivative through extraction, assem
 
 - FreeSurfer 7.4.1: begin with ReproNim/containers' registered [`bids-freesurfer--7.4.1-unstable.sif`](https://github.com/ReproNim/containers/blob/0284fc8ad8b7fa9a76c3c9f03cfb2919708ba2b2/images/bids/Singularity.bids-freesurfer--7.4.1-unstable). The `unstable` source tag is not the runtime identity. Pin the ReproNim DataLad commit and annex key, compute SHA-256, inspect licensing, and validate the exact SIF on a fixture and full pilot subject before promotion.
 - FreeSurfer 8.2.0: evaluate ReproNim's registered NeuroDesk image as an installation/runtime candidate. It exposes FreeSurfer tools rather than the required BIDS App interface, so either qualify a tracked wrapper or build a project BIDS App.
-- For a project FS8 BIDS App, reuse audited ideas from [BIDS-Apps/freesurfer](https://github.com/BIDS-Apps/freesurfer) and the [NeuroDesk FreeSurfer recipe](https://github.com/NeuroDesk/neurocontainers/blob/aa4b9af982ce409c91258281b551a06bf7028fb4/recipes/freesurfer/build.yaml). Update the wrapper for FS8 semantics, use the project's Pixi lock, checksum every fetched input, and add a real BIDS participant integration test. Do not merely change the old generator's version string.
+- For a project FreeSurfer 8.2.0 BIDS App, reuse audited ideas from [BIDS-Apps/freesurfer](https://github.com/BIDS-Apps/freesurfer) and the [NeuroDesk FreeSurfer recipe](https://github.com/NeuroDesk/neurocontainers/blob/aa4b9af982ce409c91258281b551a06bf7028fb4/recipes/freesurfer/build.yaml). Update the wrapper for FreeSurfer 8.2.0 semantics, use the project's Pixi lock, checksum every fetched input, and add a real BIDS participant integration test. Do not merely change the old generator's version string.
 
-Qualify exact `recon-any` and `recon-all-clinical` releases, weights, licenses, architecture, and BIDS App interfaces separately. Build the downstream analysis SIF from the targets proven in Phase 4.
+Qualify exact `recon-any` and `recon-all-clinical` releases, weights, licenses, architecture, and BIDS App interfaces separately. Build the downstream analysis SIF from the apps and operations proven in Phase 4.
 
 ### Qualification gate
 
@@ -219,12 +219,12 @@ For every candidate:
 - retrieve and verify the exact SIF from a clean clone;
 - record tool, wrapper, and embedded dependency versions;
 - inspect the runscript, environment sanitation, binds, architecture, and license behavior;
-- run interface, version, fixture, invalid-target, and expected-output tests;
+- run interface, version, fixture, invalid-operation, and expected-output tests;
 - run one complete representative subject when the application is participant-level;
 - validate derivative metadata and stable output naming;
 - confirm that BABS-generated execution identifies the registered SIF path;
 - compute SHA-256, record the annex key/DataLad commit, generate an SBOM where feasible, and apply the project's signature/verification policy;
-- reject or wrap the image explicitly if its interface does not meet the target contract.
+- reject or wrap the image explicitly if its interface does not meet the app contract.
 
 ### Project SIF construction
 
@@ -255,7 +255,7 @@ Every image admitted to a scientific campaign has a qualified interface, exact S
 ### Work
 
 1. Install a pinned `ds007116` snapshot at `studies/ds007116/sourcedata/raw/` and validate it.
-2. Generate an all-eligible cohort manifest with the tested `cohort` target; do not reuse the old ABCD balance file.
+2. Generate an all-eligible cohort manifest with the tested `cohort` operation; do not reuse the old ABCD balance file.
 3. Start with the qualified FreeSurfer 7.4.1 ReproNim BIDS App candidate on one participant/session.
 4. Inspect the complete BABS operation record, exact SIF, binds, outputs, logs, merge, and zip behavior.
 5. Materialize a zipped BABS result through an explicit `datalad containers-run` operation with a registered SIF, then validate and install the resulting derivative dataset at the Study derivative path.
@@ -263,18 +263,18 @@ Every image admitted to a scientific campaign has a qualified interface, exact S
 7. Test representative historical replay and document the remaining BABS wrapper/zip indirection.
 8. Scale FreeSurfer 7.4.1 only after the one-case gate passes.
 9. Repeat the one-case and scale gates for FreeSurfer 8.2.0 and for qualified `recon-any` and `recon-all-clinical` images.
-10. Add native/resampled variants only when the required input exists and the `resample` target has passed unit and integration tests. Freeze each operations dataset commit before downstream comparisons.
+10. Add native/resampled variants only when the required input exists and the `resample` operation has passed unit and integration tests. Freeze each operations dataset commit before downstream comparisons.
 
 ### Expected result
 
-The pilot should generate the same kinds of tables and figures as the poster but is not expected to reproduce ABCD effect sizes. It validates the research object, target interfaces, completeness policy, storage needs, and Slurm resource estimates.
+The pilot should generate the same kinds of tables and figures as the poster but is not expected to reproduce ABCD effect sizes. It validates the research object, app interfaces, completeness policy, storage needs, and Slurm resource estimates.
 
 ### Exit gate
 
 - all eligible scans are accounted for;
 - failures and retries have structured reasons;
 - every derivative resolves to input, code/config, operations, and exact SIF identities;
-- downstream targets replay through DataLad without notebook or Pixi-task indirection;
+- downstream operations replay through DataLad without notebook or Pixi-task indirection;
 - the Study/raw/derivative composition survives a clean recursive clone;
 - a second Slurm site can adapt only the host profile, or remaining coupling is documented.
 
@@ -286,7 +286,7 @@ Do not begin until access and derivative handling have been reviewed against the
 
 1. Record the allowed release, access endpoint, DUC version, project approval, and permitted outputs.
 2. Create a private DataLad input dataset or tracked retrieval adapter without credentials in Git.
-3. Use the tested `cohort` target to regenerate the intended selection from release metadata.
+3. Use the tested `cohort` operation to regenerate the intended selection from release metadata.
 4. Permit an all-eligible systems-test cohort only if policy and compute allow; create the poster-like unrelated/four-wave selection as a separate versioned cohort.
 5. Test relationship exclusion, wave balancing, modality pairing, duplicates, age derivation, missingness, and stable ordering.
 6. Store protected cohort manifests, logs, derivatives, extracted morphometrics, and QC only on declared private siblings.
@@ -319,7 +319,7 @@ For each campaign:
 - emit completeness and exclusion tables;
 - freeze the campaign commit before cross-pipeline analysis.
 
-Then run the closed downstream targets separately for extraction, cross-pipeline assembly, cohort/age joins, global and regional models, milestone joins, figure/table generation, result-manifest generation, numeric validation, and disclosure review.
+Then run the closed downstream operations separately for extraction, cross-pipeline assembly, cohort/age joins, global and regional models, milestone joins, figure/table generation, result-manifest generation, numeric validation, and disclosure review.
 
 ### Exit gate
 
@@ -333,7 +333,7 @@ Every poster target has a result-manifest row and regenerates from exact permitt
 - Fresh private clone with authorized ABCD credentials.
 - SIF retrieval and verification from every promised location.
 - One clean Slurm participant replay per image family.
-- One downstream DataLad replay per scientific target boundary.
+- One downstream DataLad replay per scientific operation boundary.
 - Independent BIDS validation, or reviewed exceptions, for every Study root, raw input, and claimed derivative.
 - Schema and checksum validation for every authoritative table and figure.
 - Cross-host pilot on a second Slurm system when available.
@@ -371,7 +371,7 @@ Every poster target has a result-manifest row and regenerates from exact permitt
 | Study/raw/derivative boundaries blur | Pin BIDS 1.11.1 and independently describe, compose, and validate every dataset root |
 | ABCD content becomes public | Separate datasets/siblings and run credential-free publication tests |
 | Pilot data cannot support poster inference | Use the pilot for workflow/scientific validation and reserve claims for ABCD |
-| Notebooks regain authority | Require tested BIDS App targets and reject unique notebook logic |
+| Notebooks regain authority | Require tested BIDS App operations and reject unique notebook logic |
 | External reference data drift | Register exact content with DataLad, license, citation, and checksum |
 
 ## Definition of done

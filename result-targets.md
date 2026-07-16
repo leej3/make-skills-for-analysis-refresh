@@ -8,17 +8,17 @@ The poster was visually inspected as a rendered page, not inferred only from PDF
 
 ## Scientific question
 
-Test whether deep-learning FreeSurfer tools intended for clinical scans show age-dependent bias in cortical morphometry, and whether the FreeSurfer 8 default `recon-all` agrees with the FreeSurfer 7 baseline in adolescents.
+Test whether deep-learning FreeSurfer tools intended for clinical scans show age-dependent bias in cortical morphometry, and whether FreeSurfer 8.2.0 `recon-all` agrees with the FreeSurfer 7.4.1 baseline in adolescents.
 
 ## Reference design represented by the poster
 
 - Cohort: 1,000 unrelated ABCD participants, evenly sampled from four waves.
-- Reference: FreeSurfer 7 `recon-all` using high-resolution T1w and T2w inputs.
+- Reference: FreeSurfer 7.4.1 `recon-all` using high-resolution T1w and T2w inputs.
 - Compared tools: `recon-all-clinical` and `recon-any`.
 - Compared input conditions: original high-resolution T1w and T1w resampled to 1×1×5 mm.
 - Primary global summaries: cortical gray-matter volume and cerebellar white-matter volume.
 - Developmental analysis: associate age with percent difference from the reference, then relate region-wise age-bias magnitude to published regional age at peak gray-matter volume.
-- Version comparison: FreeSurfer 7 versus FreeSurfer 8 `recon-all` on adolescent data.
+- Version comparison: FreeSurfer 7.4.1 versus FreeSurfer 8.2.0 `recon-all` on adolescent data.
 
 The original `balanced_scans.csv` is intentionally out of scope for the first implementation. The ABCD phase must eventually replace it with a tracked, executable cohort-building command whose inputs identify the allowed ABCD release/query.
 
@@ -28,7 +28,7 @@ The original `balanced_scans.csv` is intentionally out of scope for the first im
 
 For each of `recon-all-clinical` and `recon-any`, and for native and 1×1×5 mm T1w inputs, produce:
 
-- scatterplots against the FreeSurfer 7 reference for cortical gray-matter volume;
+- scatterplots against the FreeSurfer 7.4.1 reference for cortical gray-matter volume;
 - scatterplots against the reference for cerebellar white-matter volume;
 - an agreement statistic such as R² for each measure;
 - percent difference from the reference plotted against participant age;
@@ -56,7 +56,7 @@ Produce:
 
 The poster reports an anti-correlation of approximately `r = -0.39`, `p = 0.02`. Treat this as a diagnostic reference. The reconstructed result must use a predeclared atlas, model, exclusion rule, multiple-testing policy where relevant, and pinned external milestone table.
 
-### 3. FreeSurfer 7 versus 8 agreement
+### 3. FreeSurfer 7.4.1 versus 8.2.0 agreement
 
 Produce scatterplots and age-residual plots comparing:
 

@@ -5,7 +5,7 @@ description: Perform a STAMPED-compliant neuroimaging analysis using an opiniona
 
 # Perform a STAMPED-compliant neuroimaging analysis
 
-This skill is an opinionated neuroimaging implementation of the [STAMPED principles paper](https://github.com/stamped-principles/stamped-paper). Use the paper as the normative basis; do not substitute this tooling prescription for the principles or restate them in project documentation.
+This skill is an opinionated neuroimaging implementation of the [STAMPED principles paper](https://github.com/stamped-principles/stamped-paper). Use the paper's maintained [`main.tex`](https://github.com/stamped-principles/stamped-paper/blob/main/main.tex) as the normative basis. Clone the paper repository when local inspection is useful. Read included TeX sources when relevant; do not infer requirements from PDF text extraction. Do not substitute this tooling prescription for the principles or restate them in project documentation.
 
 Follow the released [BIDS 1.11.1 Common Principles: Study dataset](https://bids-specification.readthedocs.io/en/v1.11.1/common-principles.html#study-dataset) convention. Record the BIDS specification version rather than silently following the changing development documentation.
 
@@ -58,7 +58,7 @@ The top-level research object is not itself a BIDS dataset. For BIDS 1.11.1, use
 
 ## Implement BIDS-facing programs as BIDS Apps
 
-- Build every project-authored program whose primary input is a BIDS dataset from the [`bids-apps/example`](https://github.com/bids-apps/example) template, whether or not the app will be published.
+- Build every project-authored program whose primary input is a BIDS dataset from the reviewed [`bids-apps/example` template](https://github.com/bids-apps/example/tree/2ef3f19268135273aa49bd2a61c72eaac56f5cef), whether or not the app will be published. Record the exact template commit used; later upstream changes do not alter the tracked project entrypoint.
 - Preserve the standard container-entrypoint contract: positional `bids_dir`, `output_dir`, and `analysis_level`; support only the analysis levels the program actually implements; add `--participant_label` when participant selection is meaningful; expose help and version information; define the BIDS-validation policy; and reject unknown arguments.
 - Define app-specific operations only when the science requires them. Give each operation explicit accepted input dataset types, outputs, configuration, seeds, and failure behavior. Do not imply that operation names or participant/group assignments from another analysis form a generic neuroimaging vocabulary.
 - Do not let one operation silently execute an internal scientific workflow graph. Invoke each independently meaningful result-changing boundary as its own provenance-captured BIDS App execution.

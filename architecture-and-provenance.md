@@ -166,7 +166,7 @@ Before retaining any output, hash and smoke-test the exact SIF, register it with
 
 ## Project-authored BIDS Apps
 
-Treat project-authored cohort construction, resampling, extraction, assembly, modelling, figures, and validation as scientific applications with the same runtime and provenance expectations as reconstruction. Implement every operation whose primary input is a BIDS dataset or BIDS derivative as a BIDS App based on [`bids-apps/example`](https://github.com/bids-apps/example), whether or not it will be published. Each app has a container entrypoint accepting `bids_dir`, `output_dir`, and an implemented `analysis_level`, with participant selection, validation, help, version, and unknown-argument behavior defined as applicable. The entrypoint calls tested importable project code.
+Treat project-authored cohort construction, resampling, extraction, assembly, modelling, figures, and validation as scientific applications with the same runtime and provenance expectations as reconstruction. Implement every operation whose primary input is a BIDS dataset or BIDS derivative as a BIDS App based on the reviewed [`bids-apps/example@2ef3f19`](https://github.com/bids-apps/example/tree/2ef3f19268135273aa49bd2a61c72eaac56f5cef), whether or not it will be published. Each app has a container entrypoint accepting `bids_dir`, `output_dir`, and an implemented `analysis_level`, with participant selection, validation, help, version, and unknown-argument behavior defined as applicable. The entrypoint calls tested importable project code.
 
 These are candidate project operations, not a generic BIDS App vocabulary. Decide which operations are separate apps and which are coherent modes of one app before importing their code:
 
@@ -190,8 +190,8 @@ Use one campaign identity per dataset × pipeline/runtime × input condition. Do
 
 | Dataset | Campaign family | Target runtime | Input condition | Phase |
 |---|---|---|---|---|
-| ds007116 | `reconall-fs7` | FreeSurfer 7.4.1 | available native structural inputs | pilot first |
-| ds007116 | `reconall-fs8` | FreeSurfer 8.2.0 | matching native inputs | pilot |
+| ds007116 | `reconall-fs7.4.1` | FreeSurfer 7.4.1 | available native structural inputs | pilot first |
+| ds007116 | `reconall-fs8.2.0` | FreeSurfer 8.2.0 | matching native inputs | pilot |
 | ds007116 | `recon-any` | version to pin | native T1w; then 1×1×5 mm where valid | pilot |
 | ds007116 | `recon-all-clinical` | version to pin | native T1w; then 1×1×5 mm where valid | pilot |
 | ABCD | same four families | exact versions above | poster-declared native/resampled conditions | protected scale-up |
@@ -213,7 +213,7 @@ The campaign record must contain the exact dataset commit, container key, BABS c
 
 ### Scientific execution provenance
 
-This is authoritative. Use BABS-generated DataLad run records when a BIDS App target needs participant/session expansion and Slurm scheduling; use explicit `datalad containers-run` records for direct participant or group execution. Reconstruction and project-authored targets have the same provenance bar. The choice between BABS and direct execution reflects scheduling topology, not a difference in scientific importance. Each record must resolve to exact inputs, code/configuration, outputs, and registered SIF content.
+This is authoritative. Use BABS-generated DataLad run records when a BIDS App operation needs participant/session expansion and Slurm scheduling; use explicit `datalad containers-run` records for direct participant or group execution. Reconstruction and project-authored operations have the same provenance bar. The choice between BABS and direct execution reflects scheduling topology, not a difference in scientific importance. Each record must resolve to exact inputs, code/configuration, outputs, and registered SIF content.
 
 A parameterized Pixi task may launch either command path. For a project-authored scientific step, put DataLad inside the task and pass the explicit scientific program and critical arguments after `--`, so the durable record contains the resolved command rather than a task name:
 
