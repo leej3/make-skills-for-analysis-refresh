@@ -61,7 +61,7 @@ The poster reports an anti-correlation of approximately `r = -0.39`, `p = 0.02`.
 Produce scatterplots and age-residual plots comparing:
 
 - FreeSurfer 7.4.1 `recon-all`; and
-- FreeSurfer 8.2.1 `recon-all`.
+- FreeSurfer 8.2.0 `recon-all` using the exact qualified BIDS App SIF.
 
 The poster shows near-perfect agreement for the two global measures (`R² ≈ 1.00`) and no comparable age trend. Reproduce the analysis rather than hard-coding that conclusion.
 

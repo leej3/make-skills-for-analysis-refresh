@@ -5,7 +5,7 @@
 
 ## Decision
 
-Adopt Pixi for named local environments, locked Conda/PyPI resolution, and actionable project commands. Use the same reviewed Linux solution as an input to direct Apptainer/Singularity image construction.
+Adopt Pixi for named local environments, locked Conda/PyPI resolution, and actionable project commands. Use the reviewed Linux solution as an input when constructing project-authored Apptainer/Singularity images. A qualified external application SIF, such as an exact image from ReproNim/containers, keeps its own environment identity and need not be rebuilt merely to incorporate Pixi.
 
 Pixi is not the scientific provenance authority, image builder, runtime identity, workflow engine, or distribution format. Those responsibilities belong to DataLad/DataLad Containers, Apptainer/Singularity, the exact registered SIF, and BABS.
 
@@ -14,8 +14,7 @@ Pixi is not the scientific provenance authority, image builder, runtime identity
 The project needs several genuinely distinct environments:
 
 - `dev` for tests, documentation, linting, and optional notebooks;
-- `analysis` for extraction, modeling, figures, and validation;
-- `extract-legacy` while the old parser requires `pandas<2`;
+- `analysis` for extraction, modeling, figures, and validation, constrained to `pandas<2` while `freesurfer-stats` requires it and updated in place when that constraint is removed;
 - `babs` for BABS, DataLad, git-annex, and orchestration tools;
 - named image environments when processing runtimes have different dependency graphs.
 
@@ -24,7 +23,7 @@ The pandas conflict is a reason to solve separate workspace environments, not to
 The lock has two useful roles:
 
 1. it realizes fast local environments for testing, notebooks, and debugging; and
-2. it is copied into a SIF definition so the selected Linux environment can be installed with `--locked` during image construction.
+2. for project-authored images, it is copied into a SIF definition so the selected Linux environment can be installed with `--locked` during image construction.
 
 The lock does not cover the base operating system, arbitrary downloads, licensed installers, model weights, or the image filesystem. The exact registered SIF remains the runtime identity associated with a result.
 
@@ -42,8 +41,10 @@ envs/
 ├── pixi.lock
 ├── .pixi/.gitignore
 ├── images.lock.yaml
-├── containers/<runtime>/<runtime>.def
-└── container-dataset/          # DataLad dataset with annexed SIFs
+└── containers/
+    ├── repronim/               # pinned ReproNim DataLad subdataset
+    ├── custom/<runtime>/<runtime>.def
+    └── accepted/               # DataLad dataset with registered SIFs
 ```
 
 Keep root `pyproject.toml` focused on Python package metadata. Pixi can read Conda dependencies from Pixi tables in `pyproject.toml`, but this project always uses `envs/pixi.toml`: multiple environments, platforms, tasks, and non-Python dependencies are clearer there.
@@ -63,18 +64,20 @@ Pixi may update a lock and synchronize a prefix when an ordinary command sees a 
 
 There is no freshness requirement for a working lock. CI should verify that the committed manifest and lock agree and that selected environments realize; it should not rewrite or upgrade the lock. A science-relevant dependency change creates a reviewed lock and a new SIF identity.
 
-## Exact environment and image update cycle
+## Exact project-image update cycle
 
 1. Create a focused dependency/image change.
 2. Edit `envs/pixi.toml` and run `pixi lock` intentionally.
 3. Review the manifest and lock diff and test local environments with `--locked`.
-4. Update the tracked Apptainer definition when the base, system packages, non-Pixi files, activation, labels, or entry points change.
+4. Update the tracked Apptainer definition when the base, system packages, non-Pixi files, activation, labels, container runscript, or target dispatch changes.
 5. Build a SIF directly from the definition. Pin/checksum all non-Pixi inputs and record the Pixi and Apptainer versions, target architecture, definition/lock hashes, and build command.
 6. Smoke-test the SIF, hash it, register it with `datalad containers-add`, and publish its annex content to durable storage.
 7. Sign/verify the SIF and update `envs/images.lock.yaml` with the SIF checksum, annex key, DataLad commit, build inputs, supported architecture, tests, and retrieval locations.
 8. Use the new registered SIF in a pilot DataLad/BABS run before scaling.
 
 Apptainer is the image builder. Pixi resolves and installs the selected environment during that build. DataLad Containers registers, retrieves, and executes the completed image. Pixi tasks may wrap any of these explicit commands for convenience.
+
+When an existing ReproNim/containers SIF appears suitable, retrieve and pin the exact DataLad dataset commit and annex key, then qualify that image with the same fixture, interface, license, and target-host tests. Reuse it if it passes. Create a project image only when the required version or interface is absent or unsuitable; use ReproNim, BIDS-Apps, or NeuroDesk definitions as reviewed precedents rather than treating Pixi as the author of the scientific application.
 
 ## Direct SIF construction and macOS
 
@@ -118,7 +121,6 @@ Bind data, declared output/scratch locations, and any license or credential that
 | Conda/Mamba + `conda-lock` | Established HPC ecosystem and explicit locks | More separate conventions for multiple environments, PyPI, and actionable commands | Pixi cannot solve a required stack or a site standard requires it |
 | Nix/Guix | Strong declarative/source-oriented model | Greater integration cost for licensed neuroimaging tools, BABS, and target sites | A team already operates that ecosystem |
 | Containers only | Strong runtime isolation | Slower notebook/test iteration and no local multi-environment workspace | Authoritative execution, where the SIF remains mandatory |
-| ReproNim/containers | Reusable DataLad neuroimaging images | It may not contain the exact required runtime/version combination | A verified existing image satisfies the scientific and license requirements |
 | Snakemake/Nextflow | Rich workflow DAGs | BABS already addresses BIDS participant fan-out on Slurm | A distinct non-BABS workflow needs a DAG engine |
 
 Pixi is therefore a practical choice, not a STAMPED requirement. Replacing it with another reviewed resolver would not change the DataLad/SIF/BABS provenance architecture.
@@ -142,7 +144,7 @@ Pixi is therefore a practical choice, not a STAMPED requirement. Replacing it wi
 - All Pixi environments and their solutions live under `envs/` with tracked root symlinks.
 - Routine use cannot update the lock; dependency updates are intentional and reviewed.
 - The lock supports local work and locked SIF construction, but every retained result names an exact registered SIF.
-- Direct SIF construction is the default; an OCI application image exists only for a documented consumer.
+- Qualify and reuse an exact ReproNim SIF when it fits; otherwise construct a custom SIF directly. An OCI application image exists only for a documented consumer.
 - macOS/Lima and target-architecture assumptions are recorded and smoke-tested.
 - Pixi tasks follow the DataLad call-direction decision and do not define scientific dependencies or caching.
 - Realized prefixes and caches can be deleted without losing data, provenance, or reconstruction ability.
@@ -156,3 +158,4 @@ Pixi is therefore a practical choice, not a STAMPED requirement. Replacing it wi
 - [Apptainer builds](https://apptainer.org/docs/user/latest/build_a_container.html)
 - [Apptainer on macOS through Lima](https://apptainer.org/docs/admin/main/installation.html#installation-on-windows-or-mac)
 - [DataLad `containers-add`](https://docs.datalad.org/projects/container/en/stable/generated/man/datalad-containers-add.html)
+- [ReproNim/containers](https://github.com/ReproNim/containers)

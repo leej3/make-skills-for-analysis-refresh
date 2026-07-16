@@ -11,6 +11,7 @@ This directory now separates current design decisions from the evidence that led
 - [Why Pixi belongs in the analysis](decisions/pixi-role.md) — environment roles, intentional lock updates, direct SIF construction, alternatives, and limitations.
 - [Pixi tasks, DataLad provenance, and BABS operations](decisions/pixi-tasks-and-provenance.md) — safe task direction, provenance anti-patterns, and the BABS meta-provenance exception.
 - [Candidate versus authoritative SIF policy](decisions/runtime-image-strictness.md) — disposable image debugging and the strict gate for retained outputs.
+- [Role of MechaBABS](decisions/mechababs-role.md) — adopted design patterns, current maturity limits, and promotion gates.
 - [Repository-local agent skill](skills/stamped-neuroimaging-analysis/SKILL.md) — concise operating rules for agents working on the converted analysis.
 
 ## Baseline evidence
@@ -22,14 +23,18 @@ This directory now separates current design decisions from the evidence that led
 ## Decision summary
 
 - Pixi defines named local environments and provides reviewed lock inputs that are also used to reconstruct locked environments inside SIF images.
-- Apptainer/Singularity builds the SIF directly from a tracked definition. It may bootstrap from a digest-pinned OCI base, but a separately built or published OCI application image is not required.
+- Qualify and reuse an exact SIF from a pinned ReproNim/containers dataset when it fits. Otherwise, Apptainer/Singularity builds a custom SIF directly from a tracked definition, using reviewed BIDS-Apps/ReproNim/NeuroDesk patterns where useful. A separately built or published OCI application image is not required.
 - DataLad Containers registers, retrieves, and executes the completed SIF. The exact registered SIF—not `pixi.lock`, a recipe, or an OCI tag—is the runtime identity attached to an authoritative scientific run.
 - DataLad owns data identity, command provenance, and replay.
 - BABS owns BIDS App expansion, Slurm execution, auditing, and merge.
 - Pixi tasks may expose parameterized scientific commands when the task invokes `datalad containers-run` with the explicit executable, arguments, declared inputs and outputs, and registered SIF. The durable DataLad record must not contain only `pixi run <task>`.
 - A Pixi task must not invoke a result-changing scientific command without DataLad provenance. Pixi task dependencies, caching, and skip decisions do not define the scientific workflow.
 - BABS lifecycle tasks such as `init`, `submit`, retry, and merge are the explicit exception: the task and runbook provide prospective actionability, while an operations ledger records each expanded command and resulting state change.
-- The current BABS wrapper and zipped result pattern is accepted as a documented, BABS-specific indirection and is not repeated in project-authored steps. Unreleased BABS improvements are not required.
+- The current BABS wrapper and zipped result pattern is accepted as a documented, BABS-specific indirection and is not repeated in project-authored steps. A merged archive remains an upstream artifact in the operations dataset; an explicit `datalad containers-run` materialization produces the independently validated Study derivative. Unreleased BABS improvements are not required.
+- BABS/mechababs campaign attempts and scheduler state live in operational DataLad datasets. The finalized scientific derivative is installed in its BIDS Study location by exact DataLad dataset identity and commit; it is not copied or filesystem-symlinked from the operations tree.
+- Project-authored extraction, assembly, modeling, figures, and validation are BIDS Apps built from the [`bids-apps/example`](https://github.com/bids-apps/example) pattern and receive the same SIF/DataLad provenance treatment as reconstruction. Pixi tasks may launch these apps, but the container entrypoint defines each BIDS App interface.
+- MechaBABS is included as a pinned design reference and optional experimental pilot. Its campaign-axis, pin-guard, attempt, state-reconciliation, and inclusion-accounting patterns are adopted, but it is not an authoritative execution dependency until its decision gates pass.
 - Candidate SIFs may be used locally or on Slurm for disposable debugging. No candidate output may be retained, merged, scientifically compared, or released; authoritative outputs are regenerated only after the exact SIF is registered and durably retrievable.
 - The study layout follows the released [BIDS 1.11.1 Study dataset convention](https://bids-specification.readthedocs.io/en/v1.11.1/common-principles.html#study-dataset): the outer DataLad dataset has `DatasetType: study`, the raw BIDS subdataset is at `sourcedata/raw/`, and each derivative is independently described and versioned. Pin the BIDS version rather than silently adopting the development-only `rawbids/` layout.
 - `ds007116` is the engineering pilot. ABCD is the later controlled-data campaign and the basis for the poster-level age analyses.
+- The FreeSurfer 8 comparison uses version 8.2.0. ReproNim's [registered 8.2.0 NeuroDesk image](https://github.com/ReproNim/containers/blob/0284fc8ad8b7fa9a76c3c9f03cfb2919708ba2b2/.datalad/config#L303-L305) is an installation/runtime candidate but still needs the required BIDS App interface and project qualification.
