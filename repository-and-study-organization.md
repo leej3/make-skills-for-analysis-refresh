@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Use this organization for a STAMPED-compliant neuroimaging research object that executes BIDS Apps through BABS. It defines the boundaries among the research object, BIDS Study datasets, raw datasets, derivative attempts, authored code, BABS-generated code, containers, and campaign state.
+Use this organization for an ideal-oriented STAMPED neuroimaging research object that executes BIDS Apps through BABS. It defines the boundaries among the research object, BIDS Study datasets, raw datasets, derivative attempts, authored code, BABS-generated code, containers, and campaign state.
 
 This is an opinionated implementation for a reusable skill. Replace placeholders such as `<study>`, `<pipeline>`, and `<variant>` with names meaningful to the analysis at hand. Do not inherit operation names, dependency names, cohorts, pipelines, or versions from another project.
 
