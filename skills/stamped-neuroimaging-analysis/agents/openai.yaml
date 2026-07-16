@@ -1,0 +1,4 @@
+interface:
+  display_name: "STAMPED Neuroimaging Analysis"
+  short_description: "Coordinate reproducible neuroimaging workflows"
+  default_prompt: "Use $stamped-neuroimaging-analysis to design or audit this neuroimaging research object."

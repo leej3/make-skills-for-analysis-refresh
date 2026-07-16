@@ -1,5 +1,9 @@
 # STAMPED synthesis and review of DL Morphometric Biases
 
+> **Status:** baseline audit of the pre-conversion repository. Its evidence about the notebooks and scripts remains useful, but its proposed layout, tool choices, conversion phases, and unresolved-question list are superseded by the [conversion plan](conversion-plan.md), [architecture](architecture-and-provenance.md), and [poster-derived result targets](result-targets.md).
+
+The resolved direction is Pixi for multiple local/build environments, exact OCI-built SIF images for scientific runtimes, DataLad for data and command provenance, BIDS study composition, and BABS for Slurm campaigns. The initial pilot is all eligible scans in `ds007116`; ABCD selection and protected derivatives follow after access/DUC review. Historic NIH derivatives and the old `balanced_scans.csv` are not required to begin.
+
 **Assessment date:** 2026-07-13  
 **Project assessed:** `dl_morphometrics_biases/`, checked-out `main` at commit `448bf1a`  
 **Assessment type:** document and code review; no scientific computation was executed
