@@ -67,11 +67,14 @@ Make the research-object root a DataLad superdataset, not a BIDS dataset. Use th
 
 ```text
 <research-object>/
+├── AGENTS.md                     # points agents to repository-local policy
+├── README.md
 ├── pyproject.toml
 ├── result-manifest.tsv             # authoritative-result reproduction index
 ├── src/                          # canonical authored library code
 ├── apps/                         # canonical authored BIDS App entrypoints
 ├── tests/
+├── skills/                       # complete repository-local skill bundles
 ├── notebooks/                    # optional and non-authoritative
 ├── envs/
 │   ├── pixi.toml
@@ -101,6 +104,7 @@ Assign one authority to each concern:
 
 | Concern | Authority |
 |---|---|
+| Repository-local agent operating policy | Root `AGENTS.md` and complete bundles under `skills/` |
 | Authored package metadata, libraries, apps, and tests | Root `pyproject.toml`, `src/`, `apps/`, and `tests/` |
 | Dataset identity, access class, and cohort policy | `config/datasets/` |
 | Scientific arguments, application/SIF identity, and output contract | `config/pipelines/` |

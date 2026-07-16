@@ -1,40 +1,36 @@
 # Documentation map
 
-This directory now separates current design decisions from the evidence that led to them.
+This repository preserves the reasoning, evidence, and implementation guidance used to develop an ideal-oriented STAMPED neuroimaging pattern. The reusable skill is the end product; the longer documents make its choices auditable without burdening every analysis repository with the complete design history.
 
-## Canonical guidance
+## Operational guidance
 
-- [Conversion plan](conversion-plan.md) — staged migration to `stamped_dl_morphometrics_biases`.
-- [Architecture and provenance](architecture-and-provenance.md) — responsibility boundaries, repository layout, campaign matrix, container identity, and operations records.
-- [Poster-derived result targets](result-targets.md) — the result set that defines “good enough” scientific reconstruction.
-- [Decision records](decisions/README.md) — the authoritative index for choices that govern the converted analysis.
-- [Why Pixi belongs in the analysis](decisions/pixi-role.md) — environment roles, intentional lock updates, direct SIF construction, alternatives, and limitations.
-- [Pixi tasks, DataLad provenance, and BABS operations](decisions/pixi-tasks-and-provenance.md) — safe task direction, provenance anti-patterns, and the BABS meta-provenance exception.
-- [Candidate versus authoritative SIF policy](decisions/runtime-image-strictness.md) — disposable image debugging and the strict gate for retained outputs.
-- [Role of MechaBABS](decisions/mechababs-role.md) — adopted design patterns, current maturity limits, and promotion gates.
-- [Repository-local agent skill](skills/stamped-neuroimaging-analysis/SKILL.md) — concise operating rules for agents working on the converted analysis.
+- [STAMPED neuroimaging skill](skills/stamped-neuroimaging-analysis/SKILL.md) — concise operating policy for creating, running, assessing, and releasing a STAMPED neuroimaging research object.
+- [BIDS App builder skill](skills/bids-app-builder/SKILL.md) — operating policy for project-authored BIDS Apps.
+- [Conversion plan](conversion-plan.md) — project-specific sequence for converting `dl_morphometrics_biases`.
+
+Copy the conversion plan and complete skill bundles into the analysis repository. The supporting decision and rationale documents below need not be copied unless a project-specific departure requires its own record.
+
+## Supporting design and rationale
+
+- [Decision records](decisions/README.md) — rationale and responsibility boundaries that inform the skills.
+- [Repository and Study organization](repository-and-study-organization.md) — extended discussion of research-object, BIDS Study, DataLad, derivative, and campaign boundaries.
+- [Architecture and provenance](architecture-and-provenance.md) — broader architectural reasoning and provenance concepts.
+- [Poster-derived result targets](result-targets.md) — the result set that defines the intended scientific reconstruction.
+
+The skill and conversion plan govern implementation if a supporting document is more detailed or reflects an earlier design stage. Reconcile material conflicts here before changing those operational artifacts.
 
 ## Baseline evidence
 
-- [Original STAMPED audit](STAMPED_REVIEW_DL_MORPHOMETRICS_BIASES.md) — detailed review of the pre-conversion notebooks and scripts. It describes the starting point; the conversion plan supersedes its proposed layout and unresolved-question list.
-- [STAMPED paper LaTeX source (`main.tex`)](https://github.com/stamped-principles/stamped-paper/blob/main/main.tex) — normative source; clone the repository when local inspection or an exact source revision is required.
+- [Original STAMPED audit](STAMPED_REVIEW_DL_MORPHOMETRICS_BIASES.md) — review of the pre-conversion notebooks and scripts. Its evidence remains useful, but its proposed implementation is superseded by the skill and conversion plan.
+- [STAMPED paper LaTeX source (`main.tex`)](https://github.com/stamped-principles/stamped-paper/blob/main/main.tex) — normative STAMPED source; clone the repository when local inspection or an exact revision is required.
 - [OHBM 2025 poster](../recon_all_recon_any_poster_ohbm2025.pdf) — scientific reconstruction target.
 
-## Decision summary
+## Current boundary summary
 
-- Pixi defines named local environments and provides reviewed lock inputs that are also used to reconstruct locked environments inside SIF images.
-- Qualify and reuse an exact SIF from a pinned ReproNim/containers dataset when it fits. Otherwise, Apptainer/Singularity builds a custom SIF directly from a tracked definition, using reviewed BIDS-Apps/ReproNim/NeuroDesk patterns where useful. A separately built or published OCI application image is not required.
-- DataLad Containers registers, retrieves, and executes the completed SIF. The exact registered SIF—not `pixi.lock`, a recipe, or an OCI tag—is the runtime identity attached to an authoritative scientific run.
-- DataLad owns data identity, command provenance, and replay.
-- BABS owns BIDS App expansion, Slurm execution, auditing, and merge.
-- Pixi tasks may expose parameterized scientific commands when the task invokes `datalad containers-run` with the explicit executable, arguments, declared inputs and outputs, and registered SIF. The durable DataLad record must not contain only `pixi run <task>`.
-- A Pixi task must not invoke a result-changing scientific command without DataLad provenance. Pixi task dependencies, caching, and skip decisions do not define the scientific workflow.
-- BABS lifecycle tasks such as `init`, `submit`, retry, and merge are the explicit exception: the task and runbook provide prospective actionability, while an operations ledger records each expanded command and resulting state change.
-- The current BABS wrapper and zipped result pattern is accepted as a documented, BABS-specific indirection and is not repeated in project-authored steps. A merged archive remains an upstream artifact in the operations dataset; an explicit `datalad containers-run` materialization produces the independently validated Study derivative. Unreleased BABS improvements are not required.
-- BABS/mechababs campaign attempts and scheduler state live in operational DataLad datasets. The finalized scientific derivative is installed in its BIDS Study location by exact DataLad dataset identity and commit; it is not copied or filesystem-symlinked from the operations tree.
-- Project-authored extraction, assembly, modeling, figures, and validation are BIDS Apps built from the reviewed [`bids-apps/example@2ef3f19`](https://github.com/bids-apps/example/tree/2ef3f19268135273aa49bd2a61c72eaac56f5cef) pattern and receive the same SIF/DataLad provenance treatment as reconstruction. Pixi tasks may launch these apps, but the container entrypoint defines each BIDS App interface.
-- MechaBABS is included as a pinned design reference and optional experimental pilot. Its campaign-axis, pin-guard, attempt, state-reconciliation, and inclusion-accounting patterns are adopted, but it is not an authoritative execution dependency until its decision gates pass.
-- Candidate SIFs may be used locally or on Slurm for disposable debugging. No candidate output may be retained, merged, scientifically compared, or released; authoritative outputs are regenerated only after the exact SIF is registered and durably retrievable.
-- The study layout follows the released [BIDS 1.11.1 Study dataset convention](https://bids-specification.readthedocs.io/en/v1.11.1/common-principles.html#study-dataset): the outer DataLad dataset has `DatasetType: study`, the raw BIDS subdataset is at `sourcedata/raw/`, and each derivative is independently described and versioned. Pin the BIDS version rather than silently adopting the development-only `rawbids/` layout.
-- `ds007116` is the engineering pilot. ABCD is the later controlled-data campaign and the basis for the poster-level age analyses.
-- The FreeSurfer 8.2.0 comparison uses ReproNim's [registered 8.2.0 NeuroDesk image](https://github.com/ReproNim/containers/blob/0284fc8ad8b7fa9a76c3c9f03cfb2919708ba2b2/.datalad/config#L303-L305) as an installation/runtime candidate, but that image still needs the required BIDS App interface and project qualification.
+- Pixi provides locked local environments, exact bootstrap and user-space tooling, custom-image dependency input, typed tasks, validation entry points, and static reproduction meta-graphs. It is not the runtime identity, provenance authority, image builder, distribution artifact, or durable scheduler state.
+- A static Pixi graph may compose reproduction leaves. Each result-changing leaf must produce explicit DataLad/BABS evidence, and Pixi input/output caching must never skip it.
+- Prefer and qualify an existing exact SIF from a pinned ReproNim/containers dataset. Build a custom SIF only when no existing image meets the required version, interface, architecture, terms, fixtures, and target-host behavior.
+- Candidate SIF payload is disposable. A result can be retained only after the exact qualified SIF is registered and persistently retrievable, and the result is regenerated through BABS or DataLad Containers.
+- An accepted SIF does not provide execution isolation by itself. Result-producing execution uses fresh transient state, no host home or persistent cache, no retrieval credentials, explicit read-only inputs/configuration, declared writable output/scratch, and recorded host interfaces.
+- BABS owns participant/session fan-out and Slurm execution. Pin and qualify the direct Study-layout revision, preserve one attempt dataset identity through finalization and acceptance, and record lifecycle meta-provenance separately.
+- `result-manifest.tsv` links each retained result to its exact inputs, accepted SIF, run record, dataset state, and executable reproduction entry point.

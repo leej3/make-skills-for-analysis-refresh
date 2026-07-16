@@ -4,7 +4,7 @@
 
 The target is one top-level DataLad research object named `stamped_dl_morphometrics_biases`. It composes importable analysis code, environment definitions, registered SIF images, two BIDS Study datasets, independent scientific derivatives, campaign operations, and cross-study result datasets without placing controlled ABCD content in the public code history.
 
-This document records responsibility boundaries and identities. The [conversion plan](conversion-plan.md) records sequencing.
+This document records supporting responsibility and identity rationale. The [STAMPED skill](skills/stamped-neuroimaging-analysis/SKILL.md) is the concise operational policy, and the [conversion plan](conversion-plan.md) records project sequencing; reconcile this document to those artifacts if they differ.
 
 The study layout follows the released [BIDS 1.11.1 Common Principles: Study dataset](https://bids-specification.readthedocs.io/en/v1.11.1/common-principles.html#study-dataset) convention. Each study records its BIDS version so that a future specification change does not silently change the repository structure.
 
@@ -13,7 +13,7 @@ The study layout follows the released [BIDS 1.11.1 Common Principles: Study data
 | Layer | What it controls | What it does not control |
 |---|---|---|
 | `pyproject.toml` | Python package metadata, build configuration, and importable project code | Conda system dependencies, command provenance, or production runtime identity |
-| Pixi workspace | Named local environments, locked conda-forge/PyPI resolution used during SIF construction, and actionable task interfaces | Scientific provenance, image construction, or runtime identity |
+| Pixi workspace | Named local environments, exact bootstrap/tooling, locked conda-forge/PyPI resolution used during custom SIF construction, actionable tasks, validation, and static reproduction meta-graphs | Scientific provenance, image construction, runtime identity, distribution, or dynamic/durable workflow state |
 | Apptainer/Singularity definition and build | Direct construction of a Linux SIF from tracked and checksummed inputs | Registration, data provenance, or proof that a result used the image |
 | SIF image | Immutable runtime executed on Slurm | Raw-data or result provenance by itself |
 | DataLad/git-annex and DataLad Containers | Component identity and availability, SIF registration/retrieval, direct container execution, run records, and historical state | General-purpose image building or subject/session scheduling |
@@ -26,7 +26,10 @@ The study layout follows the released [BIDS 1.11.1 Common Principles: Study data
 ```text
 stamped_dl_morphometrics_biases/
 ├── .datalad/
+├── AGENTS.md
+├── README.md
 ├── pyproject.toml
+├── result-manifest.tsv
 ├── pixi.toml -> envs/pixi.toml
 ├── pixi.lock -> envs/pixi.lock
 ├── .pixi -> envs/.pixi
@@ -41,9 +44,11 @@ stamped_dl_morphometrics_biases/
 │   ├── figures.py
 │   └── validate.py
 ├── config/
-│   ├── scientific/
-│   ├── babs/
-│   └── hosts/
+│   ├── stamped-assessment.tsv
+│   ├── datasets/
+│   ├── pipelines/
+│   ├── clusters/
+│   └── campaigns/
 ├── envs/
 │   ├── pixi.toml
 │   ├── pixi.lock
@@ -58,21 +63,21 @@ stamped_dl_morphometrics_biases/
 │   │   ├── dataset_description.json  # DatasetType: study; BIDSVersion: 1.11.1
 │   │   ├── README
 │   │   ├── sourcedata/raw/            # independent raw BIDS/DataLad root
-│   │   └── derivatives/<pipeline>-<variant>/  # scientific DataLad root
+│   │   └── derivatives/<pipeline>-<variant>-attempt-<N>/
 │   └── abcd/                     # access-controlled DataLad study subdataset
 │       ├── dataset_description.json  # DatasetType: study; BIDSVersion: 1.11.1
 │       ├── README
 │       ├── sourcedata/raw/            # independent protected raw BIDS/DataLad root
-│       └── derivatives/<pipeline>-<variant>/  # protected scientific root
+│       └── derivatives/<pipeline>-<variant>-attempt-<N>/
 ├── operations/<campaign>/       # independent operational DataLad dataset
 │   ├── campaign.yaml
 │   ├── runbook.md
-│   ├── commands/                 # reviewed literal BABS lifecycle commands
 │   ├── commands.jsonl
-│   ├── attempts/
-│   ├── babs-project/             # when required by the pinned BABS layout
-│   ├── generated/
-│   └── audit/
+│   ├── desired-state.tsv
+│   ├── observed-state.tsv
+│   ├── desired-inclusion.tsv
+│   ├── accepted-attempts.tsv
+│   └── attempts/
 ├── results/<analysis>-<variant>/   # independent cross-study derivative/DataLad root
 │   ├── dataset_description.json
 │   ├── models/
@@ -81,16 +86,20 @@ stamped_dl_morphometrics_biases/
 ├── notebooks/                    # optional, non-authoritative
 ├── tests/
 ├── docs/
-├── skills/stamped-neuroimaging-analysis/
+├── skills/
+│   ├── stamped-neuroimaging-analysis/
+│   └── bids-app-builder/
 ├── LICENSES/
 └── REUSE.toml
 ```
 
 The research-object root is not itself a BIDS dataset. Each `studies/<study>/` child is a BIDS Study dataset and a distinct DataLad dataset; its raw BIDS child and every scientific derivative are also distinct DataLad dataset roots with their own identities and `dataset_description.json`. The outer description sets `DatasetType` to `"study"`. Each derivative records `GeneratedBy` and a `SourceDatasets` reference to its actual immediate input or inputs, such as `../../sourcedata/raw/`. Validate the installed raw child, Study composition, and every claimed BIDS derivative independently.
 
-The study hierarchy is the scientific and publication view. `operations/<campaign>/` is a separate DataLad boundary for BABS or mechababs administration, including attempts, lifecycle state, generated configuration, and any outer BABS project required by the pinned tool version. It is not a BIDS derivative. BABS receives the installed raw BIDS child rather than the outer Study dataset.
+The study hierarchy is the scientific and publication view. Pin and qualify a BABS revision with direct Study-layout support using `analysis_path: "."`; the reviewed minimum is [`2cc536a`](https://github.com/PennLINC/babs/commit/2cc536a51282124f3811ffa971f82a7c34116af5). Initialize each BABS project directly at `studies/<study>/derivatives/<pipeline>-<variant>-attempt-<N>/`, point it to the installed raw BIDS child, and keep RIA and initialization state under `.babs/`.
 
-The BABS merged archive dataset is a scientific upstream artifact retained inside the campaign operations boundary when its payload is zipped or otherwise not yet a valid claimed derivative. Materialize that payload with an explicit `datalad containers-run` operation into a separate, independently described scientific derivative dataset. Install the exact finalized derivative at `studies/<study>/derivatives/<pipeline>-<variant>/`, pinned by dataset ID and commit. If a future BABS version emits an already valid derivative dataset, that exact dataset may be installed directly after validation. If the campaign also refers to the finalized derivative, both locations identify the same dataset and commit through DataLad; never connect them with a filesystem symlink or an untracked file copy. The campaign or storage RIA is a retrieval source, not a second scientific identity. Per-study downstream products follow the same derivative rule. A result combining multiple studies belongs in an independent `results/<analysis>-<variant>/` derivative dataset whose `SourceDatasets` identifies every upstream dataset and version.
+The BABS project, DataLad analysis dataset, and provisional derivative are one dataset identity. Preserve merged archives, generated code, logs, and operational state there; perform finalization with provenance in that same dataset. Accept an exact commit only after merge, metadata completion, independent validation, and retrieval/replay checks. Never promote the payload by copying, filesystem symlinking, or creating a second derivative identity.
+
+`operations/<campaign>/` is a separate DataLad boundary for resolved campaign state and BABS lifecycle meta-provenance. It points to the attempt dataset but does not contain or replace it. Per-study downstream products use independent derivatives under the Study; a result combining multiple studies belongs under `results/<analysis>-<variant>/` and identifies every upstream dataset and version.
 
 ## Environment layout
 
@@ -111,7 +120,7 @@ Track `envs/pixi.toml` and `envs/pixi.lock`. The lock supports local realization
 - analysis, including `pandas<2` while the selected `freesurfer-stats` release requires it;
 - named image environments where processing runtimes have different dependency graphs.
 
-The `pandas<2` compatibility constraint belongs to the analysis itself, not to a separate “legacy extraction” path. When `freesurfer-stats` supports `pandas>=2` and the analysis passes its regression tests, update the same `analysis` environment and lock. Do not use solve groups to erase a real incompatibility between analysis and orchestration or development tooling.
+The `pandas<2` compatibility constraint belongs to the analysis itself, not to a separate “legacy extraction” path. When `freesurfer-stats` supports `pandas>=2` and the analysis passes its regression tests, retain the stable `analysis` name if useful but create a reviewed lock state and new SIF identity, then rerun affected results. Do not use solve groups to erase a real incompatibility between analysis and orchestration or development tooling.
 
 ## Runtime construction and identity
 
@@ -144,8 +153,8 @@ The image ledger under `envs/images.lock.yaml` should record, for every runtime:
 - for a custom image, the Apptainer definition path and Git commit, manifest and lock hashes when used, checksums for every build input, and the exact build command;
 - Pixi and Apptainer/Singularity versions when they participate in construction;
 - builder environment, including Lima configuration when used, and target architecture;
-- SBOM identity;
-- SIF signing identity, verification policy, and bundle or native signature reference;
+- SBOM identity when that hardening measure is adopted;
+- SIF signing identity, verification policy, and bundle or native signature reference when signing is adopted;
 - SIF SHA-256, size, annex key, DataLad dataset ID/commit, and persistent retrieval locations;
 - required bind mounts, distributed or externally supplied license files, environment variables, and smoke tests;
 - source and completed OCI digests only when an OCI artifact is intentionally consumed or published.
@@ -154,15 +163,19 @@ Use an exact SIF from [ReproNim/containers](https://github.com/ReproNim/containe
 
 Create a custom definition only when ReproNim lacks the required version or its image is unsuitable for the declared interface. Reuse the relevant ReproNim registration conventions and reviewed BIDS-Apps or NeuroDesk build/interface code where possible, recording every divergence. ReproNim/containers primarily imports and registers application images; it is not necessarily the upstream application build system. For a custom image, build the SIF directly from the tracked definition. Apptainer/Singularity is the builder; Pixi resolves and installs any selected locked environment during the build; DataLad Containers registers, retrieves, and executes the completed image. A Pixi task may wrap those explicit operations but does not become the builder or image identity.
 
-On macOS, run the build inside Linux with Lima; on Apple Silicon, use an x86_64 guest when the Slurm target is x86_64. A separate OCI application image is optional. If the definition consumes an OCI base, pin it by digest. Build and publish a completed OCI application image only for a documented consumer, and identify it separately from the authoritative SIF. The exact SIF may also be distributed through an ORAS-capable registry, but its git-annex key and DataLad commit remain its research-object identity.
+On macOS, run the build inside Linux with Lima; on Apple Silicon, use an x86_64 guest when the Slurm target is x86_64. OCI application packaging is outside the core runtime decision. If an OCI artifact is intentionally consumed or distributed, identify and assess it separately; it never replaces the accepted SIF identity used for a result.
 
-Sign and verify the SIF with a tracked Sigstore blob bundle and/or Apptainer’s native SIF signing. Sign an OCI artifact separately when one exists. See [Sigstore verification](https://docs.sigstore.dev/cosign/verifying/verify/) and [Apptainer SIF verification](https://apptainer.org/docs/user/main/signNverify.html).
+Signing, signature verification, an SBOM, and a build attestation are hardening choices. Record each decision and its evidence. If signing is adopted, a tracked Sigstore blob bundle and/or Apptainer native signing are suitable mechanisms; sign an intentionally distributed OCI artifact separately.
 
-### Candidate and authoritative images
+### Candidate, qualified, and accepted images
 
-Unregistered candidate SIFs may be used locally or on Slurm to debug installation, architecture, bind mounts, licenses, scheduler integration, or resource requests. Write their outputs only to ignored scratch or another quarantined location; never merge, retain, compare scientifically, or cite them. If a debug observation influences a parameter, inclusion decision, or model choice, record that decision and confirm it with an authoritative run.
+Candidate SIFs may be used locally or on Slurm to debug installation, architecture, bind mounts, licenses, scheduler integration, or resource requests. Write their scientific payload only to ignored scratch or another quarantined location; never merge, retain, compare scientifically, or cite it. Qualify the exact bytes against application/version, interface, architecture, terms, fixtures, and a representative target host before registration. If a candidate observation suggests a parameter, inclusion decision, or model choice, record it and re-establish the choice with an accepted-runtime execution.
 
-Before retaining any output, hash and smoke-test the exact SIF, register it with `datalad containers-add`, publish its annex content to declared storage, point BABS or `datalad containers-run` to the registered image, and regenerate the output. Registration after a debug run cannot retroactively make that earlier output authoritative. The full gate is recorded in the [candidate versus authoritative SIF decision](decisions/runtime-image-strictness.md).
+Before retaining any output, register the qualified exact SIF with `datalad containers-add`, publish its annex content to declared storage, point BABS or `datalad containers-run` to the accepted image, and regenerate the output with exact inputs, tracked configuration, an explicit command, and an intelligible run record. Registration after a debug run cannot retroactively make that earlier output authoritative. See the [candidate, qualified, and accepted SIF decision](decisions/runtime-image-strictness.md).
+
+### Execution isolation
+
+An accepted immutable SIF does not eliminate host-state dependence. Stage authenticated retrieval before computation and provide no retrieval credentials to the scientific process. Use fresh work, scratch, cache, temporary-home, and output locations; clean containment; no host home or undeclared working directory; explicit read-only input/configuration binds; and only declared writable output/scratch. Disable unnecessary network access, inspect the effective mount table during the pilot, and record unavoidable kernel, accelerator, scheduler, filesystem, security-policy, and system-bind coupling. Apply and verify equivalent controls in BABS-generated jobs. See [Disposable and isolated scientific execution](decisions/runtime-execution-isolation.md).
 
 ## Project-authored BIDS Apps
 
@@ -180,7 +193,7 @@ These are candidate project operations, not a generic BIDS App vocabulary. Decid
 | `figures` | `group` | declared figures and presentation tables |
 | `validate` | `participant` or `group` | machine-readable validation and acceptance reports |
 
-Freeze each app’s required input dataset types, supported operations and analysis levels, optional session/participant filters, configuration schema, output files, and exit behavior before relying on it. An app may consume a raw BIDS dataset, one or more BIDS derivatives, or both; record all immediate sources in its output metadata. Capture every result-changing operation independently with BABS or `datalad containers-run`. Do not hide a chain of operations inside one run record or use Pixi task dependencies as that chain.
+Freeze each app’s required input dataset types, supported operations and analysis levels, optional session/participant filters, configuration schema, output files, and exit behavior before relying on it. An app may consume a raw BIDS dataset, one or more BIDS derivatives, or both; record all immediate sources in its output metadata. Capture every result-changing operation independently with BABS or `datalad containers-run`. Do not hide a chain inside one run record. A static Pixi meta-graph may compose the independently recorded leaves but never substitutes for their evidence.
 
 Pixi tasks may launch these apps for actionability, but they do not define the app interface. The SIF runscript invokes the tracked `apps/<app-name>/run.py` entrypoint, and the DataLad record exposes the standard BIDS App arguments plus any explicit project operation and configuration. `pyproject.toml` describes the importable package used by the entrypoint.
 
@@ -223,7 +236,7 @@ prohibited: datalad containers-run -> pixi task -> hidden scientific command
 prohibited: pixi task -> scientific command without DataLad provenance
 ```
 
-Do not use Pixi task dependencies, input/output fingerprints, or skip decisions as the scientific workflow. DataLad and BABS own scientific provenance and replay. See the [Pixi tasks and provenance decision](decisions/pixi-tasks-and-provenance.md).
+A static Pixi `depends-on` graph may be the discoverable executable specification for a result set. Every result-changing child remains an independently executable, provenance-producing leaf, and the graph is not evidence that it ran. Do not use Pixi input/output fingerprints or cache-based skip decisions for result-changing tasks. Delegate dynamic fan-out, recovery, retries, and durable scheduler state to BABS or a tracked orchestrator. See the [Pixi tasks and provenance decision](decisions/pixi-tasks-and-provenance.md).
 
 ### Lifecycle or meta-provenance
 
@@ -254,7 +267,7 @@ Git commits, pull requests, tests, notebooks, and Pixi task definitions explain 
 
 ## BABS demo and mechababs as design inputs
 
-BABS is the chosen Slurm layer. Its current release uses DataLad and the FAIRly big pattern, creates participant/session result branches, stores zipped results, and merges successful outputs. The [BABS documentation](https://pennlinc-babs.readthedocs.io/en/) describes DataLad datasets for BIDS inputs and containers as required inputs.
+BABS is the chosen participant/session and Slurm layer. Pin and qualify the exact revision used; the reviewed minimum for direct Study layout is [`2cc536a`](https://github.com/PennLINC/babs/commit/2cc536a51282124f3811ffa971f82a7c34116af5), which merged [BABS PR #369](https://github.com/PennLINC/babs/pull/369). BABS uses DataLad and the FAIRly big pattern, creates participant/session result branches, stores zipped results, and merges successful outputs.
 
 The local [`babs_demo` snapshot](https://github.com/djarecka/babs_demo/tree/7d46f3763cbf8f76b17e5f345160a07d042446e8) demonstrates useful mechanics:
 
@@ -263,13 +276,13 @@ The local [`babs_demo` snapshot](https://github.com/djarecka/babs_demo/tree/7d46
 - the BABS project is placed under `derivatives/`;
 - merged zip extraction is itself recorded with `datalad run`.
 
-Use those as tested inputs, not as the repository organization. The demo omits the outer BIDS Study description and its project-root-as-analysis pattern depends on open [BABS PR #369](https://github.com/PennLINC/babs/pull/369), so it must be verified against the exact pinned BABS version. Our architecture instead separates campaign state from the Study composition and installs the finalized output dataset into the derivative location by DataLad identity and commit. Replace the demo’s mutable image tags, handwritten temporary YAML, host `.env` dependence, disabled setup check, and unpinned tool installation before using any of its mechanics scientifically.
+Use those as tested inputs, not as the complete repository organization. The demo supports `analysis_path: "."` and hidden `.babs/` state but omits the complete outer BIDS Study description and acceptance policy. Supply those missing boundaries, pin the exact BABS revision, and replace mutable image tags, handwritten temporary YAML, host `.env` dependence, disabled setup checks, and unpinned tool installation before using its mechanics scientifically.
 
 [`mechababs@4a4deb8`](https://github.com/asmacdo/mechababs/tree/4a4deb8f01c8837a5481d497140a3bb41c450f09) contributes promising operational patterns: an independent campaign DataLad dataset, separate dataset/pipeline/cluster configuration axes, pinned BABS and container inputs, an attempt ledger, clean-pin guards, and reconciled one-step state transitions. Its Study composition, output layout, container integration, and provenance closure remain under development. If it is adopted, place its campaign state under `operations/<campaign>/` and compose its finalized derivative datasets into `studies/` or `results/`; do not make its current hierarchy the project architecture. The organizational decisions in this document are ours and are established before scientific code migration. Its current role and promotion gates are recorded in the [MechaBABS decision](decisions/mechababs-role.md).
 
-DataLad Containers is not the general-purpose image builder. When construction is required, use Apptainer/Singularity; use `datalad containers-add` to register an exact completed SIF and `datalad containers-run` for every direct project-authored scientific execution so the image is an explicit run input. BABS is the current execution exception: its released job template may record a generated wrapper or direct Singularity command instead. Austin Macdonald’s unmerged BABS work would make those records more explicit, but it is not required for this conversion.
+DataLad Containers is not the image builder. When construction is required, use Apptainer/Singularity; use `datalad containers-add` to register a qualified exact SIF and `datalad containers-run` for every direct project-authored scientific execution so the image is an explicit run input. BABS may preserve a generated wrapper or direct Singularity command rather than the same direct record shape. Pin its revision and configuration, preserve the generated material, inspect the expanded command, and test representative replay.
 
-The released BABS wrapper and zipped outputs introduce undesirable indirection. Accept that as a BABS-specific limitation, retain the state needed to interpret and test a representative pilot, and do not repeat the wrapper/archive pattern in project-authored steps.
+The BABS wrapper and zipped outputs introduce indirection. Accept that as a BABS-specific limitation only when the direct-layout attempt retains one dataset identity through provenance-captured finalization, metadata completion, validation, and exact-commit acceptance. Do not repeat the wrapper/archive pattern in project-authored steps.
 
 ## Protected ABCD boundary
 

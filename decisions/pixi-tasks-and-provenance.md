@@ -2,47 +2,52 @@
 
 - **Status:** accepted
 - **Decision date:** 2026-07-16
+- **Last reviewed:** 2026-07-16
 - **Supersedes:** the earlier prohibition on result-changing or BABS-changing Pixi tasks
 
 ## Decision
 
-Pixi tasks may expose parameterized DataLad or BABS commands as project launchers. They do not define a BIDS App interface; the app's tracked container entrypoint does. The important boundary is not whether a Pixi task starts the operation, but what the durable record says happened.
+Use typed, described Pixi tasks as actionable project launchers. They may expose explicit DataLad Containers commands, BABS lifecycle operations, validation, development, retrieval, image operations, and static reproduction meta-graphs. They do not define a BIDS App interface; the tracked container entrypoint does.
 
-For project-authored scientific steps, the task must invoke `datalad containers-run`. For a BIDS App, it passes the resolved standard app arguments and any explicit project operation to the registered SIF runscript; for another scientific program, it passes the explicit executable and arguments. DataLad therefore records the resolved operation, declared inputs and outputs, and registered SIF—not `pixi run <task>`.
+The durable record determines the evidence:
 
-For BABS lifecycle operations such as `init`, setup checks, submission, retry, and merge, a Pixi task may expose the command even though the invocation is not a DataLad scientific run. The task and README make the repository actionable; an operations ledger records what was actually invoked and what state changed.
+- A direct project-authored scientific leaf invokes `datalad containers-run` with the resolved executable or standard BIDS App arguments, critical options, declared inputs and outputs, and accepted SIF.
+- A BABS lifecycle leaf invokes a declared operation. BABS/DataLad records participant execution; the campaign operations ledger records the expanded lifecycle command and state transition.
+- A static Pixi `depends-on` graph may compose those leaves as the discoverable executable specification for a result set. It neither records nor proves that a child ran.
 
-The two provenance anti-patterns are:
+Every result-changing leaf must produce explicit DataLad/BABS evidence. Never use Pixi `inputs`/`outputs` caching to skip such a leaf.
 
-1. `datalad run -- pixi run <task>` or `datalad containers-run -- pixi run <task>`, because the run record preserves only the task indirection.
-2. A result-changing Pixi task that invokes the scientific program directly, because no DataLad record captures the resulting scientific change.
+## Call direction
 
-Pixi task dependencies and task caching must not define the scientific workflow. DataLad and BABS own execution provenance and replay.
-
-## Why direction matters
-
-These two call graphs look similar at the terminal but create different records:
+Prefer:
 
 ```text
-BAD
-datalad containers-run -- pixi run extract
-    -> run record: "pixi run extract"
-    -> reader must recover and interpret the historical task definition
+pixi run --locked <scientific-leaf> <parameters>
+    -> datalad containers-run ... -- <resolved scientific command>
+    -> run record contains the command, inputs, outputs, and SIF
 
-GOOD
-pixi run --locked extract <parameters>
-    -> task invokes: datalad containers-run ... -- <resolved BIDS App arguments>
-    -> run record: app arguments/operation, inputs, outputs, and SIF
+pixi run --locked <babs-operation> <parameters>
+    -> declared BABS lifecycle command
+    -> BABS/DataLad execution evidence plus operations-ledger entry
 ```
 
-In the good direction, Pixi is only a convenient command launcher. Its parameter substitution happens before DataLad receives the command, so the DataLad record is the provenance authority. Editing the Pixi task later does not change the historical run record. The SIF runscript invokes the tracked entrypoint constructed from [`bids-apps/example@2ef3f19`](https://github.com/bids-apps/example/tree/2ef3f19268135273aa49bd2a61c72eaac56f5cef), independently of the Pixi task.
+Prohibit:
 
-## A parameterized scientific task
+```text
+datalad run -- pixi run <task>
+datalad containers-run -- pixi run <task>
+pixi task -> result-changing scientific program without DataLad/BABS evidence
+```
 
-Pixi supports typed task arguments. A task may use them to construct an explicit DataLad Containers command:
+Putting Pixi inside a DataLad record preserves only the task indirection. Putting the explicit DataLad Containers command inside the task lets Pixi substitute parameters before DataLad records the resolved operation. Editing the task later cannot change that historical run record.
+
+## Direct scientific leaf tasks
+
+A task may construct an explicit DataLad Containers command from typed arguments:
 
 ```toml
 [tasks.extract-stats]
+description = "Extract participant morphometrics with the accepted app SIF"
 args = ["input", "output"]
 cmd = """
 datalad containers-run \
@@ -58,62 +63,76 @@ datalad containers-run \
 """
 ```
 
-Register the app container with a call format that invokes its SIF runscript so the command after `--` is the standard BIDS App argument vector. The precise quoting and repeated-argument behavior must be tested for paths containing spaces. Prefer validated path/config identifiers over arbitrary shell fragments. Keep scientific parameters in tracked configuration where possible, and include that configuration as a declared DataLad input.
+Register a BIDS App container with a call format that invokes its SIF runscript, so the command after `--` is the standard BIDS App argument vector. Test quoting and repeated arguments with paths containing spaces. Prefer validated path or configuration identifiers over arbitrary shell fragments. Keep scientific parameters in tracked configuration where practical and declare that configuration as an input.
 
-Each such task should produce one understandable DataLad run record. Use the standard BIDS App argument contract plus any closed, validated project operation; reject arbitrary operations. Do not join extraction, modeling, and figures with `depends-on`; expose independent DataLad-recorded steps instead.
+Each leaf produces one understandable provenance record. Use a closed, validated project operation vocabulary; reject arbitrary operations. Keep independently meaningful extraction, assembly, modeling, figure, and validation boundaries as separate recorded leaves.
 
-## BABS as the explicit exception
+## Static reproduction meta-graphs
 
-BABS owns participant/session fan-out, Slurm submission, branch collection, audit, and merge. Commands such as `babs init` are normally executed outside `datalad run`; Git records their effects, not the command line that caused them. This is meta-provenance rather than the scientific run provenance of each participant job.
+A meta-task such as `reproduce-<result-set>` may join independently executable leaves with `depends-on`. This provides one discoverable command and an executable specification of intended ordering.
+
+The meta-graph is prospective actionability, not execution evidence:
+
+- every result-changing leaf produces its own DataLad/BABS record;
+- no result-changing task uses Pixi input/output fingerprints or cache-based skip decisions;
+- `result-manifest.tsv` maps each retained result to the actual run record, exact input and SIF identities, and its reproduction task; and
+- validation checks the manifest and run records rather than inferring success from the graph.
+
+For dynamic participant fan-out, conditional recovery, retries, or durable scheduler state, use BABS or a tracked orchestrator that invokes and verifies the same provenance-producing leaves. Do not encode opaque control flow in task shell text.
+
+## BABS lifecycle and meta-provenance
+
+BABS owns participant/session fan-out, Slurm submission, branch collection, audit, and merge. Its lifecycle commands are normally not scientific `datalad run` operations. A Pixi task may expose them, while an operations ledger records what was actually invoked and what state changed.
 
 For each campaign:
 
-1. Keep the exact, parameterized BABS lifecycle commands as Pixi tasks or tracked command templates.
-2. Explain repository initialization and the operation sequence in the root README and `operations/<campaign>/runbook.md`.
-3. Record each actual invocation in `operations/<campaign>/commands.jsonl`, including the expanded argv, timestamp, actor, working directory, relevant tool versions, configuration hash, exit status, scheduler IDs, and before/after dataset commits.
-4. Commit the operation record with the state change it explains.
+1. keep exact parameterized BABS lifecycle commands as typed, described Pixi tasks or tracked templates;
+2. explain initialization and the operation sequence in the root README and `operations/<campaign>/runbook.md`;
+3. append each actual invocation to `operations/<campaign>/commands.jsonl`, including expanded argv, timestamp, actor, working directory, relevant tool versions, configuration hash, exit status, scheduler IDs, and before/after dataset commits; and
+4. commit the operation record with the state change it explains.
 
-The task definition is prospective actionability. The ledger plus repository history is evidence of an actual operation. Neither replaces the BABS/DataLad records for participant execution.
+Pin and qualify a BABS revision with direct Study-layout support using `analysis_path: "."`; the reviewed minimum is [`2cc536a`](https://github.com/PennLINC/babs/commit/2cc536a51282124f3811ffa971f82a7c34116af5). Keep the BABS project, DataLad analysis dataset, and provisional derivative as one dataset identity. Record initialization, setup checks, submission, status inspection, retry, merge, finalization, validation, and acceptance. Accept an exact commit only after merge, provenance-captured finalization, metadata completion, and independent validation.
 
-This exception also applies to BABS setup commands that create repositories and to administrative queries whose output is worth preserving. It does not authorize a project-authored scientific program to bypass DataLad.
+BABS's generated wrapper and zip/merge layer add provenance indirection. Preserve and inspect the generated execution material and test representative historical replay. This accepted BABS-specific boundary does not authorize an authored scientific program to bypass DataLad or reproduce the indirection elsewhere.
 
-## Other useful Pixi tasks
+The task definition is prospective actionability. The operations ledger and repository history are evidence of the actual lifecycle operation. Neither replaces BABS/DataLad participant-execution records.
 
-Tasks may also wrap:
+## Other useful task classes
 
+Tasks may also expose:
+
+- `validate-stamped` and `validate-stamped-ideal`;
 - lint, unit tests, documentation, schema checks, and environment reports;
-- `datalad containers-add`, container listing, retrieval, signature verification, and smoke tests;
-- an explicit Apptainer/Lima build command;
-- read-only `babs status` queries;
-- the DataLad-recorded scientific pattern shown above.
+- container registration, listing, retrieval, and smoke tests;
+- signature verification when that hardening measure was adopted;
+- explicit Apptainer/Lima build commands; and
+- read-only BABS status and audit queries.
 
-A task may call `datalad run` for a non-container administrative artifact where that is the correct authority. Result-producing scientific steps use a registered SIF and `datalad containers-run`, except where BABS performs container execution.
+A task may call `datalad run` for a non-container administrative artifact when that is the correct authority. Result-producing scientific steps use an accepted SIF and `datalad containers-run`, except where BABS performs container execution.
 
-## What DataLad records—and what it does not
+## What the records mean
 
-`datalad containers-run` is a DataLad run wrapper that adds the selected image as an input dependency. It records the command it is given, declared inputs and outputs, working directory, and dataset state. It does not expand a Pixi task name that surrounds it or infer an environment from a lock file. See the official [`containers-run` reference](https://docs.datalad.org/projects/container/en/stable/generated/man/datalad-containers-run.html).
+`datalad containers-run` adds the selected image as an input dependency and records the command it receives, declared inputs and outputs, working directory, and dataset state. It does not expand a surrounding Pixi task or infer a runtime from the lock file.
 
-For direct steps, `datalad rerun` can therefore retrieve the registered SIF and replay the explicit recorded command. Historical verification must start from the recorded historical state. Applying an old command to newer code or data is a new computation and should create a new run commit.
+For direct steps, `datalad rerun` can retrieve the registered SIF and replay the explicit historical command. Start verification from the recorded historical state. Applying an old command to newer code or data is a new computation and requires a new run record.
 
-## Current BABS limitation
-
-The released BABS path may record a generated wrapper rather than the final inner BIDS App command, and its merged outputs are zipped. This is the same kind of indirection that the project avoids elsewhere. It is accepted as a BABS-specific limitation because BABS contributes the broader DataLad/Slurm campaign model; it must not become a pattern for project-authored steps.
-
-Pin BABS and its configuration, retain the generated state that is needed to interpret a pilot, and test representative replay. Do not make the conversion depend on Austin Macdonald’s unmerged `containers-run` work. Reassess a supported upstream implementation when available.
+The root result manifest is the result-level index. A task definition says how to attempt reproduction; the manifest and provenance records say which execution produced the retained result.
 
 ## Relationship to image construction
 
-Apptainer/Singularity builds a SIF. DataLad Containers registers it with `containers-add` and executes it with `containers-run`. A Pixi task may wrap those explicit operations for convenience. Calling that “Pixi building the image” is inaccurate: Pixi resolves and installs the locked environment inside the image build, while Apptainer is the builder.
+Apptainer/Singularity builds a SIF. DataLad Containers registers and directly executes it. Pixi resolves and installs a locked environment during an authored build and may wrap explicit build, qualification, and registration commands; it is not the image builder or runtime identity.
 
 ## Acceptance criteria
 
+- Every task is typed where it accepts parameters and has a useful description.
 - No scientific DataLad record contains only `pixi run <task>` or another task/Make target.
-- Every project-authored result-changing task creates an explicit `datalad containers-run` record naming the registered SIF, inputs, outputs, app operation or program, and critical arguments.
-- No scientific stage graph depends on Pixi `depends-on`, input/output caching, or skip decisions.
-- Project actions are available through parameterized Pixi tasks while the tracked container entrypoint remains the BIDS App interface; scientific task bodies expose the explicit BIDS App arguments and operation to DataLad.
+- Every direct project-authored result-changing leaf records the explicit executable or BIDS App arguments, critical options, inputs, outputs, and accepted SIF through `datalad containers-run`.
+- Static Pixi meta-graphs may express dependencies, but every result-changing leaf produces explicit evidence, no result-changing task uses Pixi input/output caching, and no graph or cache state is treated as execution evidence.
+- Dynamic fan-out, recovery, retry, and durable scheduler state are delegated to BABS or a tracked orchestrator.
 - Every BABS lifecycle task is documented, and every actual state-changing invocation has a corresponding operations-ledger entry.
-- BABS participant results still resolve to pinned inputs, configuration, BABS version, and exact SIF content.
-- The BABS wrapper/zip indirection is acknowledged as a unique limitation rather than repeated elsewhere.
+- BABS participant results resolve to pinned inputs, configuration, BABS revision, and exact SIF content; the wrapper/zip indirection is preserved and tested as a BABS-specific limitation.
+- Every retained result in `result-manifest.tsv` resolves to its actual run record, exact inputs and accepted SIF, and executable reproduction task.
+- `validate-stamped` and `validate-stamped-ideal` check the assessment rather than relying on task existence as evidence.
 
 ## Sources
 

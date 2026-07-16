@@ -6,7 +6,7 @@ Create a new DataLad research object, `STAMPED-dl_morphometrics_biases`, that re
 
 This is an opinionated implementation intended to achieve the STAMPED ideals where practical. Enforce every STAMPED MUST, make and record an explicit decision for every applicable SHOULD, and support relevant MAY choices without treating them as required. Assess both the complete research object and every component; a component gap rolls up to the research object. Repository organization, data boundaries, environment policy, image identity, provenance capture, access controls, and campaign operations must exist and pass a toy proof before historical scientific code is imported. The old `dl_morphometrics_biases` repository remains read-only evidence; it is not cleaned up in place.
 
-Include the complete repository-local [STAMPED neuroimaging skill](skills/stamped-neuroimaging-analysis/SKILL.md) and [BIDS App builder skill](skills/bids-app-builder/SKILL.md) in the first commit. Make `AGENTS.md` require the STAMPED skill for research-object work and the BIDS App builder in addition whenever an authored BIDS App is created or adapted. Treat this plan and the copied skills as current project policy. Project-specific decision records may refine them, but must identify and resolve any conflict before implementation changes.
+Include the complete repository-local [STAMPED neuroimaging skill](skills/stamped-neuroimaging-analysis/SKILL.md) and [BIDS App builder skill](skills/bids-app-builder/SKILL.md) in the first commit. Make `AGENTS.md` require the STAMPED skill for research-object work and the BIDS App builder in addition whenever an authored BIDS App is created or adapted. Treat this plan and the copied skills as current project policy. Record every required SHOULD and hardening choice in `config/stamped-assessment.tsv` or linked implementation evidence; resolve any conflict by updating the affected policy artifact explicitly before implementation changes.
 
 ## Fixed decisions
 
@@ -17,7 +17,7 @@ Include the complete repository-local [STAMPED neuroimaging skill](skills/stampe
 - Use DataLad/git-annex for data and SIF identity, availability, provenance, and replay.
 - Use BABS for BIDS participant/session expansion, Slurm submission, audit/retry, and merge. Target generic Slurm and keep host-specific policy in profiles.
 - Treat MechaBABS as a pinned design reference only. Reuse suitable campaign, pinning, state, transition, and inclusion-accounting patterns, but do not install or invoke MechaBABS unless the copied STAMPED skill and this plan are explicitly revised to adopt it.
-- Use Pixi for named development, analysis, BABS/tooling, test, and image-authoring environments, and for locked Linux dependency installation during SIF construction. Pixi is not the image builder, workflow engine, provenance authority, or result-runtime identity.
+- Use Pixi for named development, analysis, BABS/tooling, test, and image-authoring environments; exact bootstrap and user-space tools; locked Linux dependency installation during custom SIF construction; typed project tasks; validation; and static reproduction meta-graphs. Pixi is not the image builder, provenance authority, result-runtime identity, distribution artifact, or dynamic/durable workflow-state engine.
 - Store the real Pixi manifest and lock under `envs/`, with tracked root symlinks for discovery. Do not use `pixi pack` or another packed-prefix artifact.
 - Use one `analysis` environment with `pandas<2` while the selected `freesurfer-stats` release requires it. This is the analysis environment, not a legacy extraction environment. When a qualified release supports `pandas>=2`, review the dependency update, produce a new lock and analysis SIF, and rerun affected results.
 - Let Pixi tasks provide local and actionable interfaces. A task may wrap a BABS lifecycle operation, an image operation, or a complete `datalad containers-run` command. A typed Pixi meta-task or dependency graph may provide the one-command reproduction entry point only when every result-changing leaf invokes BABS or an explicit DataLad Containers operation and produces its own intelligible provenance. Never record only `pixi run <task>` inside DataLad, never let a scientific task bypass DataLad, and never enable Pixi input/output caching for result-changing tasks.
@@ -56,7 +56,7 @@ Use gated phases. A phase is complete only when its evidence is committed to the
 - `docs/source-inventory.tsv`;
 - `docs/result-targets.md`;
 - initial STAMPED assessment, result manifest, and runtime-candidate manifest;
-- project-specific decision records only where this plan requires a choice not already resolved by the copied skills.
+- recorded SHOULD and hardening decisions, with their rationale and linked implementation evidence.
 
 ### Exit gate
 
@@ -68,7 +68,7 @@ Every intended poster panel has an ID, expected inputs and outputs, a reproducti
 
 1. Create the top-level DataLad superdataset with a text-friendly configuration. It is the research-object root, not a BIDS dataset or “super-study,” and its commits compose exact component/subdataset commits.
 2. Verify and commit both complete repository-local skill bundles and the `AGENTS.md` pointer requiring them in the appropriate work.
-3. Establish the complete directory pattern from the copied [STAMPED skill](skills/stamped-neuroimaging-analysis/SKILL.md) and [repository and Study organization](repository-and-study-organization.md), including canonical `src/` and `apps/`, `envs/containers/{repronim,custom,accepted}/`, `config/`, `operations/`, `studies/`, multi-study `results/`, tests, documentation, licenses, root `result-manifest.tsv`, and access-control metadata.
+3. Establish the complete directory pattern from the copied [STAMPED skill](skills/stamped-neuroimaging-analysis/SKILL.md), including repository-local `skills/`, canonical `src/` and `apps/`, `envs/containers/{repronim,custom,accepted}/`, `config/`, `operations/`, `studies/`, multi-study `results/`, tests, documentation, licenses, root `result-manifest.tsv`, and access-control metadata.
 4. Record BIDS 1.11.1 as the pinned specification. Create an empty toy Study dataset immediately so the organization is executable rather than aspirational.
 5. Give every outer `studies/<study>/` dataset a `dataset_description.json` with `DatasetType: "study"` and a README. Install `sourcedata/raw/` as an independent raw BIDS/DataLad dataset. Do not create placeholder derivative datasets before their producing operation exists.
 6. Create every BABS attempt directly at `studies/<study>/derivatives/<pipeline>-<variant>-attempt-<N>/`. Treat it as provisional while running and as accepted only after provenance-captured finalization, complete derivative metadata, independent validation, and an acceptance record. Require `GeneratedBy` and exact placement-independent `SourceDatasets`; keep `.babs/`, generated code, logs, and container material distinct from the declared scientific payload.
@@ -113,8 +113,8 @@ A collaborator can understand and validate the research object's root/component 
 
 ### Image-source registry
 
-1. Create the accepted DataLad container dataset at `envs/containers/accepted/` and `envs/images.lock.yaml` before selecting production images. Install the pinned ReproNim/containers source dataset at `envs/containers/repronim/`; reserve `envs/containers/custom/` for project definitions.
-2. Define image states: discovered, candidate, qualified, registered-authoritative, superseded, and rejected.
+1. Create the accepted DataLad container dataset at `envs/containers/accepted/` and the derived convenience index `envs/images.lock.yaml` before selecting production images. Every index entry must resolve to the accepted dataset commit and exact SIF annex identity; the accepted dataset, run record, and result manifest prevail on conflict. Install the pinned ReproNim/containers source dataset at `envs/containers/repronim/`; reserve `envs/containers/custom/` for project definitions.
+2. Define image states: discovered, candidate, qualified, accepted/registered, superseded, and rejected. Reserve “authoritative” for executions and results that satisfy the complete provenance and isolation gates.
 3. For external images, record the source DataLad dataset ID and commit, annex key, original source reference, local SHA-256, architecture, licenses, expected BIDS App interface, and retrieval locations.
 4. For project-built images, reserve tracked definition paths and record the manifest/lock, base, non-Pixi inputs, builder versions, architecture, build command, SIF hash, annex key, and tests. Record an explicit hardening decision for an SBOM, signature, and build attestation; attach them when adopted and supported.
 5. Add retrieval and verification tests using a small redistributable toy SIF. Do not wait for the scientific runtimes to test the registry.
@@ -124,7 +124,7 @@ A collaborator can understand and validate the research object's root/component 
 1. Make a focused dependency/image change.
 2. Edit `envs/pixi.toml`, run `pixi lock` intentionally, and inspect the manifest and lock diff.
 3. Test relevant macOS environments with `--locked` and realize the reviewed Linux solution on the target architecture.
-4. If the change affects a runtime, create a new SIF identity; never mutate an authoritative image in place.
+4. If the change affects a runtime, create a new SIF identity; never mutate an accepted SIF in place.
 5. Commit the manifest, lock, tests, image-ledger change, and rationale together. There is no freshness requirement for an otherwise working lock.
 
 ### Exit gate
@@ -243,7 +243,7 @@ For every candidate:
 3. Install the selected Linux environment from `envs/pixi.toml` and `envs/pixi.lock` with a pinned Pixi and `--locked` at its final in-image path.
 4. Build directly for the target Slurm architecture. On macOS, use Apptainer inside Lima; use an x86-64 guest on Apple Silicon for x86-64 Slurm targets.
 5. Record the builder, architecture, definition and lock hashes, command, tests, and all inputs.
-6. Smoke-test the final SIF and compute its authoritative checksum. Apply the recorded signing, SBOM, and attestation hardening decisions.
+6. Smoke-test the final SIF and compute its exact content checksum. Apply the recorded signing, SBOM, and attestation hardening decisions.
 7. Register it with `datalad containers-add` in `envs/containers/accepted/`, publish annex content to persistent storage, and update `envs/images.lock.yaml`.
 
 Candidate SIFs may be used to debug in quarantined local or Slurm space. Retained outputs must be regenerated through the promoted registered SIF according to the copied STAMPED skill.
@@ -383,7 +383,7 @@ Every poster target has a result-manifest row and regenerates from exact permitt
 | A BABS result is copied or promoted into a second derivative identity | Use the direct attempt dataset from initialization through in-place finalization and exact-commit acceptance |
 | An attempted retry overwrites history or a scientific change masquerades as a retry | Give attempts stable identities; create a new attempt, variant, or campaign as appropriate |
 | A BABS lifecycle command is missing | Append expanded argv and before/after state to the operations ledger |
-| A direct SIF rebuild differs | Treat registered bytes as authoritative and preserve all build inputs and the exact artifact |
+| A direct SIF rebuild differs | Treat the registered exact bytes as the accepted runtime identity and preserve all build inputs and the exact artifact |
 | Candidate output enters the research object | Quarantine candidate campaigns; register the image and regenerate every retained output |
 | A license is unlawfully withheld or redistributed | Record terms; distribute when permitted; otherwise use a documented read-only bind |
 | Study/raw/derivative boundaries blur | Pin BIDS 1.11.1 and independently describe, compose, and validate every dataset root |

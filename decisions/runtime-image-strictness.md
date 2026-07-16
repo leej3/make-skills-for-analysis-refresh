@@ -1,65 +1,75 @@
-# Candidate versus authoritative SIF policy
+# Candidate, qualified, and accepted SIF policy
 
 - **Status:** accepted with an explicit debugging exception
 - **Decision date:** 2026-07-16
+- **Last reviewed:** 2026-07-16
 
 ## Question
 
-Must every local or HPC invocation use a SIF that was already registered and persistently retrievable, or would that make image development and cluster debugging unnecessarily expensive?
+Must every local or HPC invocation use a SIF that has already been qualified, registered, and made persistently retrievable, or would that make image development and cluster debugging unnecessarily expensive?
+
+## Normative status
+
+This is an implementation decision supporting STAMPED identity, provenance, actionability, portability, and distribution requirements. Candidate execution is permitted, not required.
+
+Signing, signature verification, SBOMs, build attestations, and separately signing an intentionally distributed OCI artifact are hardening choices. Consider and record each relevant decision; none is a blanket condition for STAMPED conformance or SIF acceptance.
 
 ## Decision
 
-Unregistered candidate SIFs may be used for debugging locally or on Slurm. Their outputs are disposable and cannot enter the retained research object or support a scientific conclusion.
+Unqualified or unregistered candidate SIFs may be used for local and cluster debugging. Their scientific payload is disposable, must remain outside accepted derivative datasets and `result-manifest.tsv`, and cannot support a scientific conclusion.
 
-Every retained, merged, scientifically compared, or released output must be regenerated through BABS or `datalad containers-run` using the exact SIF already registered in the DataLad container dataset and available from declared storage.
+Before an output is retained, merged, used for a scientific comparison or decision, or released, the exact SIF bytes must:
 
-This separates fast failure discovery from authoritative execution without weakening the lineage of the research object.
+1. pass the declared qualification checks;
+2. be registered under `envs/containers/accepted/`;
+3. be persistently retrievable from declared storage; and
+4. be identified by the accepted container dataset commit, annex key or equivalent content identity, and checksum.
 
-## Image and output states
+The intended output must then be generated anew through BABS or `datalad containers-run`. Registering an image after an execution never promotes that execution or its output.
 
-| State | Image requirement | Permitted output use |
+An accepted SIF makes a runtime eligible for result-producing execution. It is not sufficient by itself: an authoritative execution and result must also identify exact inputs, tracked configuration, the resolved command, the DataLad/BABS run record, and the resulting dataset state, and must satisfy the execution-isolation decision.
+
+## States
+
+| State | Meaning | Permitted use |
 |---|---|---|
-| Local development | Candidate SIF or local Pixi environment | Tests, interactive inspection, and disposable debug files only |
-| Slurm debugging | Candidate SIF allowed from project/scratch storage | Scheduler, bind, resource, and smoke-test debugging only; never merge or retain |
-| Authoritative pilot | Exact SIF registered before execution; run through BABS/DataLad | May be retained if all provenance and validation gates pass |
-| Scaled/release run | Same strictness plus durable retrieval, verification, and release checks | Scientific comparison, figures, tables, and release |
+| Candidate | Exact bytes have not completed qualification and acceptance | Disposable testing and debugging only |
+| Qualified | Exact bytes pass application/version, interface, architecture, terms, fixture, and target-host checks | Eligible for registration; not yet eligible to produce retained results |
+| Accepted/registered | Qualified bytes are registered and persistently retrievable with exact identities | Eligible for result-producing execution |
+| Authoritative execution/result | Generated after acceptance with exact inputs, configuration, command, isolated execution, and DataLad/BABS provenance | Retention, comparison, figures, tables, and release |
 
-“Scientifically compared” includes using a candidate output to choose parameters, include/exclude participants, select a model, or make a claim. If a debug observation influences a scientific decision, record the decision and confirm it with a strict run.
+“Used for a scientific comparison or decision” includes using a candidate output to choose parameters, include or exclude participants, select a model, or make a claim. Candidate evidence may suggest a question, but it cannot be the sole basis for a retained choice. Document the choice and re-establish it using an accepted-runtime execution before it affects retained analysis.
 
-## Promotion procedure
+## Qualification and acceptance
 
-When a candidate is ready:
+1. Acquire an exact SIF from a pinned source container dataset or build a candidate from pinned or checksummed inputs.
+2. Qualify its application and version, command-line or BIDS App interface, architecture, licence or terms, project fixtures, and representative target host.
+3. Record the source dataset commit and annex identity for an acquired image, or the definition, lock, non-Pixi inputs, build command, builder versions, and platform for a custom image. In both cases, record tests, SIF SHA-256, and annex key.
+4. Register the exact qualified bytes under `envs/containers/accepted/` with `datalad containers-add` and publish the annex content to persistent storage.
+5. Point BABS or the direct DataLad Containers operation to the accepted image and generate the intended output anew.
+6. Record the exact SIF, input, configuration, command, run, and output dataset identities, and map every retained result in `result-manifest.tsv`.
+7. Delete or quarantine candidate scientific payload. Retain diagnostic logs only when they are clearly marked non-authoritative and excluded from accepted derivatives and the result manifest.
 
-1. Stop writing to its debug output location.
-2. Hash and smoke-test the exact SIF bytes.
-3. Register that SIF with `datalad containers-add` and publish the annex content to a declared durable location.
-4. Record the definition/lock hashes, non-Pixi inputs, build command, tool versions, architecture, SIF SHA-256, annex key, and DataLad commit.
-5. Point the BABS campaign or `datalad containers-run` step at the registered image.
-6. Regenerate the intended output. Do not promote an earlier unrecorded debug output, even when the SIF bytes are identical.
-7. Delete or quarantine debug outputs so they cannot be mistaken for authoritative data.
+An optional `envs/images.lock.yaml` may index these identities, but it is not the authority. Its entries must resolve to the accepted container dataset and exact SIF content.
 
-The rerun is necessary because registration after execution cannot retroactively make the original command, inputs, outputs, and image dependency part of a DataLad/BABS provenance record.
+## Debugging safeguards
 
-## Practical safeguards
+- Put candidate scientific payload in ignored scratch, disposable Slurm workspaces, or explicitly disposable branches that are never accepted or merged into a derivative.
+- Mark candidate jobs and image filenames clearly and never reuse an accepted campaign identity.
+- Make accepted output paths writable only through the project's BABS/DataLad entry points where practical.
+- Do not require persistent registration, signing, or an SBOM for each failed candidate build.
+- Never use a mutable tag, definition file, Pixi lock, local cache, or build recipe as a substitute for exact accepted SIF content.
+- Apply the separate [disposable and isolated scientific execution](runtime-execution-isolation.md) controls to every result-producing run and as many candidate tests as practical.
 
-- Put debug outputs in an ignored `scratch/` path, disposable Slurm workspace, or explicitly disposable branch that is never merged into a derivative dataset.
-- Mark candidate jobs and image filenames clearly; never reuse an authoritative campaign identifier.
-- Make authoritative output paths writable only through the project’s BABS/DataLad entry points where practical.
-- Do not require registry publication, signing, or an SBOM before each failed candidate build. Require exact registration and durable retrieval before an authoritative run, and complete signature/SBOM/release gates before release.
-- A mutable tag, definition file, Pixi lock, or build cache is not a substitute for the exact SIF once an output is retained.
+## Why registration precedes retained execution
 
-## Why not require registration for every debug attempt?
-
-Image development often fails on package installation, bind paths, licenses, architecture, memory, or scheduler integration. Annexing and publishing every failed candidate adds persistent noise without improving the provenance of a result. The strict boundary belongs at retention and scientific use.
-
-## Why not retain a successful debug output?
-
-The research object must explain its own outputs. A successful debug job may lack a DataLad run record, exact input declarations, stable image retrieval, or the reviewed campaign configuration. Re-execution after registration creates one auditable path and prevents accidental promotion of an opaque artifact.
+A debug execution may lack a DataLad run record, exact input declarations, stable image retrieval, tracked configuration, or isolation evidence. Registration performed afterward cannot add those facts retroactively. Re-execution after acceptance creates one auditable path and prevents accidental promotion of an opaque artifact.
 
 ## Acceptance criteria
 
-- No debug output is present in an authoritative derivative dataset or result manifest.
-- Every retained output was produced after its SIF was registered and is linked to that SIF by a DataLad/BABS record.
-- Candidate and authoritative output locations and campaign names cannot be confused.
-- A candidate that affects a scientific choice is followed by a documented decision and strict confirmation run.
-- Release verification retrieves the exact SIF without relying on the developer’s workstation or cluster cache.
+- Every `result-manifest.tsv` entry resolves through a DataLad/BABS record to an accepted exact SIF, exact inputs, tracked configuration, and executable command.
+- Every accepted SIF has qualification evidence, content identity, accepted-container dataset commit, and persistent retrieval evidence.
+- No candidate scientific payload occurs in an accepted derivative or result manifest.
+- Retained candidate diagnostic logs are clearly non-authoritative and cannot be mistaken for scientific results.
+- Any scientific choice prompted by candidate output is documented and re-established using an accepted-runtime execution.
+- Clean verification retrieves the exact SIF without relying on a developer workstation, mutable tag, or cluster cache.
